@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
     <style>
         /* --- GLOBAL DESIGN --- */
-        body { padding: 10px; background-color: #f0f2f5; color: #1d1d1d; min-height: 100vh; }
+        body { padding: 10px; background-color: #f0f2f5; color: #1d1d1d; min-height: 100vh; padding-bottom: 80px;}
         h1 { text-align: center; font-size: 1.5rem; margin-bottom: 20px; color: #333; }
         
         /* Views Management */
@@ -46,6 +46,17 @@
         .stat-row { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; font-size: 0.9em; }
         .stat-val { font-weight: bold; }
 
+        /* SHOPPING LIST STYLES */
+        .shop-input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        .shop-input-group input { margin-bottom: 0; }
+        .shop-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
+        .shop-item:last-child { border-bottom: none; }
+        .check-btn { 
+            width: 30px; height: 30px; border-radius: 50%; border: 2px solid #ddd; background: white; 
+            display: flex; align-items: center; justify-content: center; cursor: pointer; color: white;
+        }
+        .check-btn:active { background-color: #eee; }
+
         /* Navigation unten */
         .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; border-top: 1px solid #ddd; display: flex; justify-content: space-around; padding: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 100; }
         .nav-item { text-align: center; font-size: 0.9em; color: #888; cursor: pointer; flex: 1; }
@@ -61,6 +72,7 @@
         
         button.action-btn { background-color: #0984e3; border: none; width: auto; padding: 8px 20px; font-size: 0.9em; margin-bottom: 0; }
         button.danger { background-color: #d63031; border: none; opacity: 0.8; font-size: 0.8rem; margin-top: 10px;}
+        button.add-btn { background-color: #00b894; border: none; width: auto; margin-bottom: 0; }
     </style>
 </head>
 <body>
@@ -77,10 +89,10 @@
                     <div class="widget-content" id="dashboard-summary">Lade...</div>
                 </div>
 
-                <div class="module-card disabled">
+                <div class="module-card" onclick="openModule('shopping')">
                     <span class="module-icon">🛒</span>
                     <div class="module-title">Einkaufsliste</div>
-                    <small>Kommt bald</small>
+                    <div class="widget-content" id="shop-widget-summary">Lade...</div>
                 </div>
 
                 <div class="module-card" onclick="openModule('finance')">
@@ -128,6 +140,11 @@
                     <header>📜 Verlauf</header>
                     <ul id="history-list" style="font-size: 0.8em; padding-left: 20px;"></ul>
                 </article>
+                
+                <details style="margin-top: 30px;">
+                    <summary style="color:#666; font-size:0.9em;">Admin Putzplan</summary>
+                    <button class="danger" onclick="resetCleaning()">🧹 Nur Putzdaten resetten</button>
+                </details>
             </div>
 
             <div class="bottom-nav">
@@ -175,9 +192,38 @@
             </article>
 
             <details style="margin-top: 30px;">
-                <summary style="color:#666; font-size:0.9em;">Admin & Einrichtung</summary>
-                <button class="danger" onclick="resetDatabase()">⚠️ Erst-Einrichtung (Reset)</button>
+                <summary style="color:#666; font-size:0.9em;">Admin Finanzen</summary>
+                <button class="danger" onclick="resetFinance()">💸 Nur Finanzen resetten</button>
             </details>
+        </div>
+
+        <div id="view-shopping" class="app-view">
+            <div class="back-header">
+                <button class="back-btn" onclick="openModule('main-menu')">❮</button>
+                <h2 style="margin:0; font-size: 1.2rem;">Einkaufsliste</h2>
+            </div>
+
+            <article class="card">
+                <div class="shop-input-group">
+                    <input type="text" id="shop-input" placeholder="Was fehlt? (z.B. Milch)">
+                    <button class="add-btn" onclick="window.addShopItem()">+</button>
+                </div>
+                
+                <div id="shopping-list-container">
+                    <p style="text-align:center; color:#999;">Alles da! Kühlschrank ist voll.</p>
+                </div>
+            </article>
+
+            <article class="card">
+                <header>🛒 Einkaufs-Logbuch</header>
+                <ul id="shop-log-list" style="font-size: 0.8em; padding-left: 20px; color:#666;">
+                    <li>Lade...</li>
+                </ul>
+            </article>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="danger" onclick="resetShopping()" style="width: auto; font-size: 0.8em;">🛒 Reset (Liste leeren)</button>
+            </div>
         </div>
 
     </main>
@@ -213,7 +259,7 @@
             element.classList.add('active');
         };
 
-        // --- PUTZ LOGIK HELFER ---
+        // --- HELPER ---
         function calculatePoints(daysPassed) {
             if (daysPassed < 4) return 15;
             if (daysPassed < 6) return 10;
@@ -233,9 +279,10 @@
 
         // --- RENDERERS ---
         function renderDashboardWidget(data) {
+            // Putzen
             const alexStatus = getStatusInfo(data.users.me.lastCleaned);
             const fredStatus = getStatusInfo(data.users.him.lastCleaned);
-            return `
+            document.getElementById('dashboard-summary').innerHTML = `
                 <div class="widget-row">
                     <span>Alex: ${data.users.me.currentTask}</span>
                     <span><span class="status-dot" style="background:${alexStatus.color}"></span> ${alexStatus.days}T</span>
@@ -245,6 +292,28 @@
                     <span><span class="status-dot" style="background:${fredStatus.color}"></span> ${fredStatus.days}T</span>
                 </div>
             `;
+
+            // Finanzen
+            if(data.finance) {
+                 let total = 0;
+                 Object.values(data.finance.costs).forEach(c => {
+                    let val = c.val;
+                    if(c.val === 55.08) val = 18.36; // GEZ fix
+                    total += val;
+                 });
+                 document.getElementById('fin-widget-summary').innerText = `Gesamt: ${total.toFixed(0)}€ / Monat`;
+            } else {
+                document.getElementById('fin-widget-summary').innerText = "Einrichtung nötig";
+            }
+
+            // Einkaufsliste
+            if(data.shopping) {
+                const count = data.shopping.list.length;
+                const text = count === 0 ? "Alles da ✅" : `<b>${count} Teile</b> fehlen`;
+                document.getElementById('shop-widget-summary').innerHTML = text;
+            } else {
+                document.getElementById('shop-widget-summary').innerText = "Einrichtung nötig";
+            }
         }
 
         function renderUserCard(userId, userName, userData) {
@@ -290,36 +359,25 @@
             `;
         }
 
-        // --- FINANZ LOGIK (NEU MIT GEZ SPEZIAL) ---
+        // --- FINANZ LOGIK ---
         function renderFinance(data) {
             if(!data.finance) return; 
-
             const costs = data.finance.costs; 
             const history = data.finance.history || [];
-
             let monthlyTotal = 0;
             let listHtml = '<table style="width:100%; font-size:0.9em;">';
 
             for (const [key, item] of Object.entries(costs)) {
-                
-                // SPEZIAL-LOGIK: GEZ
                 const isGEZ = key === 'gez';
-                
-                // Für die Tabelle nehmen wir den gespeicherten Wert (bei GEZ ist das der Quartalsbetrag)
                 const displayVal = item.val; 
-                
-                // Für die Gesamtrechnung oben nehmen wir bei GEZ nur ein Drittel
                 const calculationVal = isGEZ ? (item.val / 3) : item.val;
-                
                 monthlyTotal += calculationVal;
 
-                // Labels & Text
                 const labels = { rent: "Kaltmiete", gas: "Gasabschlag", strom: "Strom", gez: "GEZ (Rundfunk)", internet: "Internet" };
                 const label = labels[key] || key;
                 
                 let dateText = `Abb: ${item.day}. des Monats`;
                 if(isGEZ) dateText = `Abb: ${item.day}. (Jan/Apr/Jul/Okt)`;
-
                 let valText = `${displayVal.toFixed(2)} €`;
                 if(isGEZ) valText += ` <span style="font-size:0.7em; color:#888;">/ Q</span>`;
 
@@ -337,14 +395,10 @@
                 `;
             }
             listHtml += '</table>';
-
             document.getElementById('fin-total').innerText = monthlyTotal.toFixed(2);
             document.getElementById('cost-list').innerHTML = listHtml;
             document.getElementById('fin-share-me').innerText = (monthlyTotal * 0.55).toFixed(2) + " €";
             document.getElementById('fin-share-him').innerText = (monthlyTotal * 0.45).toFixed(2) + " €";
-
-            const widgetEl = document.getElementById('fin-widget-summary');
-            if(widgetEl) widgetEl.innerText = `Anteil Alex: ${(monthlyTotal * 0.55).toFixed(0)}€`;
 
             const recentHistory = [...history].reverse().slice(0, 5);
             let histHtml = "";
@@ -357,7 +411,6 @@
         window.editCost = async (key, currentVal) => {
             let msg = `Neuer Betrag für ${key}?`;
             if(key === 'gez') msg += " (Bitte Quartalssumme eingeben!)";
-            
             const newValStr = prompt(msg, currentVal);
             if(newValStr === null) return; 
             const newVal = parseFloat(newValStr.replace(',', '.'));
@@ -367,31 +420,95 @@
             const docRef = doc(db, "wg_app", "state_v3");
             const docSnap = await getDoc(docRef);
             const data = docSnap.data();
-            
             const now = new Date();
             const dateStr = now.toLocaleDateString('de-DE');
             const historyEntry = { date: dateStr, category: key, oldVal: currentVal, newVal: newVal };
-
             const newCosts = { ...data.finance.costs };
             newCosts[key].val = newVal;
             const newHistory = data.finance.history ? [...data.finance.history, historyEntry] : [historyEntry];
-
             await updateDoc(docRef, { "finance.costs": newCosts, "finance.history": newHistory });
+        };
+
+        // --- SHOPPING LOGIK ---
+        function renderShopping(data) {
+            if(!data.shopping) return;
+            const list = data.shopping.list || [];
+            const log = data.shopping.log || [];
+
+            // Liste
+            let html = "";
+            list.forEach((item, index) => {
+                html += `
+                <div class="shop-item">
+                    <span>${item.name}</span>
+                    <div class="check-btn" onclick="window.buyItem(${index}, '${item.name}')">✔</div>
+                </div>
+                `;
+            });
+            if(list.length === 0) html = `<p style="text-align:center; color:#aaa; margin-top:20px;">Nichts zu kaufen 🍻</p>`;
+            document.getElementById('shopping-list-container').innerHTML = html;
+
+            // Log
+            const recentLog = [...log].reverse().slice(0, 10);
+            let logHtml = "";
+            recentLog.forEach(l => {
+                logHtml += `<li>${l.buyer} hat <b>${l.item}</b> am ${l.date} gekauft.</li>`;
+            });
+            document.getElementById('shop-log-list').innerHTML = logHtml || "<li>Noch nichts gekauft</li>";
+        }
+
+        window.addShopItem = async () => {
+            const input = document.getElementById('shop-input');
+            const name = input.value.trim();
+            if(!name) return;
+
+            const docRef = doc(db, "wg_app", "state_v3");
+            const docSnap = await getDoc(docRef);
+            const data = docSnap.data();
+
+            const currentList = data.shopping && data.shopping.list ? data.shopping.list : [];
+            const newList = [...currentList, { name: name }];
+            
+            await updateDoc(docRef, { "shopping.list": newList });
+            input.value = ""; 
+        };
+
+        window.buyItem = async (index, itemName) => {
+            if(!confirm(`Hast du (Alex) "${itemName}" gekauft?\n\n(OK = Alex, Abbrechen = Fred)`)) {
+                if(!confirm(`War es Fred?`)) return; 
+                var buyer = "Fred";
+            } else {
+                var buyer = "Alex";
+            }
+
+            const docRef = doc(db, "wg_app", "state_v3");
+            const docSnap = await getDoc(docRef);
+            const data = docSnap.data();
+
+            const newList = [...data.shopping.list];
+            newList.splice(index, 1);
+
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('de-DE');
+            const logEntry = { buyer: buyer, item: itemName, date: dateStr };
+            const newLog = data.shopping.log ? [...data.shopping.log, logEntry] : [logEntry];
+
+            await updateDoc(docRef, { "shopping.list": newList, "shopping.log": newLog });
         };
 
         // --- MAIN APP LOAD ---
         function loadApp() {
             onSnapshot(doc(db, "wg_app", "state_v3"), (docSnap) => {
                 if (!docSnap.exists()) {
+                    // Fallback Init für komplett leere DB
                     initDatabase(); 
                     return;
                 }
                 const data = docSnap.data();
                 
-                // Dashboard
-                document.getElementById('dashboard-summary').innerHTML = renderDashboardWidget(data);
+                renderDashboardWidget(data);
                 
-                // Putz App
+                // Putz
                 document.getElementById('score-me').innerText = data.users.me.score;
                 document.getElementById('score-him').innerText = data.users.him.score;
                 let html = "";
@@ -412,11 +529,10 @@
                 document.getElementById('history-list').innerHTML = historyHtml || "<li>Leer</li>";
 
                 // Finanzen
-                if(data.finance) {
-                    renderFinance(data);
-                } else {
-                    document.getElementById('fin-widget-summary').innerText = "Einrichtung nötig!";
-                }
+                if(data.finance) renderFinance(data);
+                
+                // Einkaufen
+                if(data.shopping) renderShopping(data);
             });
         }
 
@@ -429,31 +545,38 @@
             const currentUserData = data.users[userId];
             const nextTask = (currentTaskName === "Bad putzen") ? "Küche putzen" : "Bad putzen";
             const newScore = currentUserData.score + pointsToAdd;
-            const newUserData = {
-                score: newScore,
-                currentTask: nextTask,
-                lastCleaned: Timestamp.now() 
-            };
+            const newUserData = { score: newScore, currentTask: nextTask, lastCleaned: Timestamp.now() };
             const historyEntry = { user: userId, task: currentTaskName, points: pointsToAdd, daysTaken: daysTaken, date: Timestamp.now() };
             const newHistory = data.history ? [...data.history, historyEntry] : [historyEntry];
             await updateDoc(docRef, { [`users.${userId}`]: newUserData, history: newHistory });
         };
 
-        // --- INITIALISIERUNG MIT NEUEN DATEN ---
-        async function initDatabase() {
-            console.log("Erstelle Datenbank (Putz + Finanz)...");
-            await setDoc(doc(db, "wg_app", "state_v3"), {
+        // --- MODULARE RESET FUNKTIONEN ---
+
+        // 1. NUR PUTZEN
+        window.resetCleaning = async () => {
+            if(!confirm("Nur Putzdaten & Statistiken löschen?")) return;
+            const docRef = doc(db, "wg_app", "state_v3");
+            await updateDoc(docRef, {
                 users: {
                     me: { score: 0, currentTask: "Bad putzen", lastCleaned: Timestamp.now() },
                     him: { score: 0, currentTask: "Küche putzen", lastCleaned: Timestamp.now() }
                 },
-                history: [],
+                history: []
+            });
+        }
+
+        // 2. NUR FINANZEN
+        window.resetFinance = async () => {
+            if(!confirm("Nur Finanzen zurücksetzen?")) return;
+            const docRef = doc(db, "wg_app", "state_v3");
+            await updateDoc(docRef, {
                 finance: {
                     costs: {
                         rent: { val: 850.00, day: 1 },
-                        gas: { val: 120.00, day: 1 }, // Korrigiert
-                        strom: { val: 85.00, day: 1 }, // Korrigiert
-                        gez: { val: 55.08, day: 13 }, // Quartalsbetrag (18.36 * 3)
+                        gas: { val: 120.00, day: 1 },
+                        strom: { val: 85.00, day: 1 },
+                        gez: { val: 55.08, day: 13 },
                         internet: { val: 39.99, day: 1 }
                     },
                     history: []
@@ -461,7 +584,32 @@
             });
         }
 
-        window.resetDatabase = async () => { if(confirm("ACHTUNG: Alle Daten werden auf Standardwerte zurückgesetzt!")) { await initDatabase(); location.reload(); } }
+        // 3. NUR SHOPPING
+        window.resetShopping = async () => {
+            if(!confirm("Einkaufsliste leeren?")) return;
+            const docRef = doc(db, "wg_app", "state_v3");
+            
+            // Falls das Modul noch gar nicht existiert (Update würde failen), müssen wir set mit merge nutzen oder update
+            // Da updateDoc failt wenn Feld nicht da ist, nutzen wir setDoc mit merge für "init" Charakter
+            // Aber hier wollen wir nur das Feld überschreiben.
+            // Safe way:
+            await setDoc(docRef, {
+                shopping: {
+                    list: [],
+                    log: []
+                }
+            }, { merge: true });
+        }
+
+        // Init (nur falls DB komplett gelöscht wurde)
+        async function initDatabase() {
+            await setDoc(doc(db, "wg_app", "state_v3"), {
+                users: { me: { score: 0, currentTask: "...", lastCleaned: Timestamp.now() }, him: { score: 0, currentTask: "...", lastCleaned: Timestamp.now() } },
+                history: [],
+                finance: { costs: {}, history: [] },
+                shopping: { list: [], log: [] }
+            });
+        }
         
         loadApp();
     </script>
