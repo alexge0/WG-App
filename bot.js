@@ -25,6 +25,7 @@ async function sendTelegram(message) {
 
 // 3. Hauptlogik
 async function checkTasks() {
+  await sendTelegram("👋 Hallo WG! Der Bot ist online und die Verbindung steht.");
   const docRef = db.collection('wg_app').doc('state_v3');
   const docSnap = await docRef.get();
 
