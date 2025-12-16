@@ -93,10 +93,12 @@
                     <small>Kommt bald</small>
                 </div>
 
-                <div class="module-card disabled">
+                <div class="module-card" onclick="openModule('finance')">
                     <span class="module-icon">💸</span>
                     <div class="module-title">Finanzen</div>
-                    <small>Kommt bald</small>
+                    <div class="widget-content" id="fin-widget-summary">
+                    Lade...
+                    </div>
                 </div>
 
             </div>
@@ -157,6 +159,40 @@
                 </div>
             </div>
         </div>
+        
+        <div id="view-finance" class="app-view">
+    <div class="back-header">
+        <button class="back-btn" onclick="openModule('main-menu')">❮</button>
+        <h2 style="margin:0; font-size: 1.2rem;">💰 WG-Kasse</h2>
+    </div>
+
+    <article class="card" style="background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white; border:none;">
+        <header style="border-bottom: 1px solid rgba(255,255,255,0.2);">Gesamtbelastung mtl.</header>
+        <div style="font-size: 2.5em; font-weight: bold; text-align: center;">
+            <span id="fin-total">0</span> €
+        </div>
+        <div class="grid" style="margin-top:15px; text-align:center; font-size:0.9em;">
+            <div>
+                <small style="opacity:0.8">Alex (55%)</small><br>
+                <b id="fin-share-me">0 €</b>
+            </div>
+            <div>
+                <small style="opacity:0.8">Fred (45%)</small><br>
+                <b id="fin-share-him">0 €</b>
+            </div>
+        </div>
+    </article>
+
+    <article class="card">
+        <header>Fixkosten Aufstellung</header>
+        <div id="cost-list">Lade Daten...</div>
+    </article>
+
+    <article class="card">
+        <header>📜 Preisentwicklung</header>
+        <ul id="fin-history-list" style="font-size: 0.8em; padding-left: 20px; color:#666;"></ul>
+    </article>
+</div>
 
     </main>
 
@@ -275,7 +311,7 @@
             `;
         }
 
-        // --- MAIN APP LOAD ---
+// --- MAIN APP LOAD ---
         function loadApp() {
             onSnapshot(doc(db, "wg_app", "state_v3"), (docSnap) => {
                 if (!docSnap.exists()) {
@@ -309,6 +345,14 @@
                     historyHtml += `<li><b>${name}</b>: ${h.task} (${h.points} Pkt / ${h.daysTaken}T)</li>`;
                 });
                 document.getElementById('history-list').innerHTML = historyHtml || "<li>Leer</li>";
+
+                // --- HIER IST DAS NEUE STÜCK ---
+                // 4. FINANZEN RENDERN
+                if(data.finance) {
+                    renderFinance(data);
+                }
+                // -------------------------------
+
             });
         }
 
@@ -347,6 +391,128 @@
         }
         window.resetDatabase = async () => { if(confirm("Reset?")) { await initDatabase(); location.reload(); } }
 
+        // --- FINANZ LOGIK ---
+
+// Diese Funktion rendert die Kostenliste
+function renderFinance(data) {
+    if(!data.finance) return; // Falls noch keine Finanzdaten da sind
+
+    const costs = data.finance.costs; // z.B. { rent: {val: 500, day: 1}, ... }
+    const history = data.finance.history || [];
+
+    let total = 0;
+    let listHtml = '<table style="width:100%; font-size:0.9em;">';
+
+    // Durch alle Kosten iterieren
+    for (const [key, item] of Object.entries(costs)) {
+        total += item.val;
+        
+        // Schönere Namen für die IDs
+        const labels = { rent: "Kaltmiete", gas: "Gasabschlag", strom: "Strom", gez: "GEZ", internet: "Internet" };
+        const label = labels[key] || key;
+
+        listHtml += `
+            <tr style="border-bottom:1px solid #eee;">
+                <td style="padding:10px 0;">
+                    <b>${label}</b><br>
+                    <small style="color:#888;">Abb: ${item.day}. des Monats</small>
+                </td>
+                <td style="text-align:right;">
+                    <b>${item.val.toFixed(2)} €</b><br>
+                    <a href="#" onclick="window.editCost('${key}', ${item.val})" style="font-size:0.8em;">Bearbeiten</a>
+                </td>
+            </tr>
+        `;
+    }
+    listHtml += '</table>';
+
+    // 1. Werte in die Karten schreiben
+    document.getElementById('fin-total').innerText = total.toFixed(2);
+    document.getElementById('cost-list').innerHTML = listHtml;
+    
+    // 2. Split berechnen (55% Alex, 45% Fred)
+    document.getElementById('fin-share-me').innerText = (total * 0.55).toFixed(2) + " €";
+    document.getElementById('fin-share-him').innerText = (total * 0.45).toFixed(2) + " €";
+
+    // 3. Widget im Hauptmenü aktualisieren
+    const widgetEl = document.getElementById('fin-widget-summary');
+    if(widgetEl) widgetEl.innerText = `Gesamt: ${total.toFixed(0)}€ / Monat`;
+
+    // 4. Historie rendern
+    const recentHistory = [...history].reverse().slice(0, 5);
+    let histHtml = "";
+    recentHistory.forEach(h => {
+        histHtml += `<li><b>${h.date}</b>: ${h.category} geändert (${h.oldVal}€ ➝ ${h.newVal}€)</li>`;
+    });
+    document.getElementById('fin-history-list').innerHTML = histHtml || "<li>Keine Änderungen bisher</li>";
+}
+
+// Funktion zum Bearbeiten von Kosten
+window.editCost = async (key, currentVal) => {
+    const newValStr = prompt(`Neuer Betrag für ${key}?`, currentVal);
+    if(newValStr === null) return; // Abgebrochen
+    
+    const newVal = parseFloat(newValStr.replace(',', '.')); // Komma zu Punkt
+    if(isNaN(newVal)) return alert("Bitte eine Zahl eingeben!");
+
+    if(newVal === currentVal) return;
+
+    const docRef = doc(db, "wg_app", "state_v3");
+    const docSnap = await getDoc(docRef);
+    const data = docSnap.data();
+    
+    // Historie Eintrag bauen
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('de-DE');
+    
+    const historyEntry = {
+        date: dateStr,
+        category: key,
+        oldVal: currentVal,
+        newVal: newVal
+    };
+
+    // Daten Update
+    // Wir kopieren das alte costs objekt und ändern nur den einen Wert
+    const newCosts = { ...data.finance.costs };
+    newCosts[key].val = newVal;
+
+    const newHistory = data.finance.history ? [...data.finance.history, historyEntry] : [historyEntry];
+
+    await updateDoc(docRef, {
+        "finance.costs": newCosts,
+        "finance.history": newHistory
+    });
+};
+
+// --- INIT UPDATE --- 
+// WICHTIG: Ersetze deine alte initDatabase Funktion durch diese hier, 
+// damit die Finanzdaten beim Reset angelegt werden!
+
+async function initDatabase() {
+    console.log("Erstelle Datenbank mit Finanzen...");
+    await setDoc(doc(db, "wg_app", "state_v3"), {
+        users: {
+            me: { score: 0, currentTask: "Bad putzen", lastCleaned: Timestamp.now() },
+            him: { score: 0, currentTask: "Küche putzen", lastCleaned: Timestamp.now() }
+        },
+        history: [],
+        // NEU: FINANZEN
+        finance: {
+            costs: {
+                rent: { val: 850.00, day: 1 },
+                gas: { val: 120.00, day: 15 },
+                strom: { val: 85.00, day: 15 },
+                gez: { val: 18.36, day: 15 },
+                internet: { val: 39.99, day: 1 }
+            },
+            history: []
+        }
+    });
+}
+
+
+        
         loadApp();
     </script>
 </body>
