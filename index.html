@@ -3,109 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WG-Putz-App</title>
+    <title>WG Zentrale</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
     <style>
-        /* Design Basics */
-        body { padding: 10px; background-color: #f0f2f5; color: #1d1d1d; padding-bottom: 80px; }
+        /* --- GLOBAL DESIGN --- */
+        body { padding: 10px; background-color: #f0f2f5; color: #1d1d1d; min-height: 100vh; }
         h1 { text-align: center; font-size: 1.5rem; margin-bottom: 20px; color: #333; }
         
-        /* Karten Design */
-        .card { background-color: #ffffff; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #e0e0e0; }
-        
-        /* Navigation unten */
-        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; border-top: 1px solid #ddd; display: flex; justify-content: space-around; padding: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 100; }
-        .nav-item { text-align: center; font-size: 0.9em; color: #888; cursor: pointer; flex: 1; }
-        .nav-item.active { color: #0984e3; font-weight: bold; }
-        .nav-icon { display: block; font-size: 1.5em; margin-bottom: 3px; }
+        /* Views Management */
+        .app-view { display: none; }
+        .app-view.active { display: block; }
 
-        /* Score & UI */
+        /* --- DASHBOARD (STARTSEITE) STYLES --- */
+        .dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        
+        .module-card {
+            background: white; border-radius: 15px; padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #eee;
+            cursor: pointer; transition: transform 0.2s;
+            position: relative; overflow: hidden;
+        }
+        .module-card:active { transform: scale(0.98); }
+        
+        .module-icon { font-size: 2em; margin-bottom: 10px; display: block; }
+        .module-title { font-weight: bold; font-size: 1.2em; margin-bottom: 5px; }
+        
+        /* Live Widget im Dashboard */
+        .widget-content { font-size: 0.9em; color: #666; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f0f0; }
+        .widget-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+
+        /* Placeholder Modules */
+        .module-card.disabled { opacity: 0.6; cursor: default; filter: grayscale(1); }
+        .module-card.disabled:active { transform: none; }
+
+        /* --- PUTZ-APP SPECIFIC STYLES --- */
+        .back-header { display: flex; align-items: center; margin-bottom: 20px; }
+        .back-btn { background: none; border: none; font-size: 1.5rem; padding: 0 10px 0 0; color: #333; width: auto; }
+        
+        .card { background-color: #ffffff; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #e0e0e0; }
         .score-display { font-size: 2.5em; font-weight: bold; text-align: center; color: #2d3436; }
         .score-label { text-transform: uppercase; letter-spacing: 1px; font-size: 0.8em; color: #636e72; font-weight: bold; }
         .task-title { font-size: 1.3em; font-weight: bold; margin-bottom: 5px; color: #000; }
         .deadline { font-size: 0.9em; font-weight: bold; margin-bottom: 10px; }
-        
-        /* Progress Bar */
         .progress-container { width: 100%; background-color: #e0e0e0; border-radius: 10px; height: 12px; margin-top: 10px; overflow: hidden; }
         .progress-bar { height: 100%; transition: width 0.5s; }
+        .stat-row { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; font-size: 0.9em; }
+        .stat-val { font-weight: bold; }
+
+        /* Navigation unten (nur in Putz App sichtbar) */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; border-top: 1px solid #ddd; display: flex; justify-content: space-around; padding: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 100; }
+        .nav-item { text-align: center; font-size: 0.9em; color: #888; cursor: pointer; flex: 1; }
+        .nav-item.active { color: #0984e3; font-weight: bold; }
 
         /* Farben */
         .color-good { color: #00b894; } .bg-good { background-color: #00b894; }
         .color-warn { color: #e17055; } .bg-warn { background-color: #e17055; }
         .color-bad { color: #d63031; } .bg-bad { background-color: #d63031; }
 
-        /* Stats Grid */
-        .stat-row { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; font-size: 0.9em; }
-        .stat-row:last-child { border-bottom: none; }
-        .stat-val { font-weight: bold; }
-
-        button.danger { background-color: #d63031; border: none; opacity: 0.8; font-size: 0.8rem; margin-top: 10px;}
+        /* Sub-View Umschalter in Putz App */
+        .sub-view { display: none; }
+        .sub-view.active { display: block; padding-bottom: 80px; }
+        
         button.action-btn { background-color: #0984e3; border: none; width: auto; padding: 8px 20px; font-size: 0.9em; margin-bottom: 0; }
-
-        /* Views umschalten */
-        .view-section { display: none; }
-        .view-section.active { display: block; }
+        button.danger { background-color: #d63031; border: none; opacity: 0.8; font-size: 0.8rem; margin-top: 10px;}
     </style>
 </head>
 <body>
 
     <main class="container">
-        <h1>🧹 WG-Putz-App</h1>
-
-        <div id="view-dashboard" class="view-section active">
-            <article class="card">
-                <header>🏆 Highscore</header>
-                <div class="grid">
-                    <div style="text-align: center;">
-                        <div class="score-label">Alex</div>
-                        <div id="score-me" class="score-display">-</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div class="score-label">Fred</div>
-                        <div id="score-him" class="score-display">-</div>
+        
+        <div id="view-main-menu" class="app-view active">
+            <h1>🏠 WG Zentrale</h1>
+            
+            <div class="dashboard-grid">
+                
+                <div class="module-card" onclick="openModule('cleaning')">
+                    <span class="module-icon">🧹</span>
+                    <div class="module-title">Putzplan</div>
+                    
+                    <div class="widget-content" id="dashboard-summary">
+                        Lade Status...
                     </div>
                 </div>
-            </article>
 
-            <div id="task-container">
-                <p aria-busy="true" style="text-align:center;">Lade Daten...</p>
+                <div class="module-card disabled">
+                    <span class="module-icon">🛒</span>
+                    <div class="module-title">Einkaufsliste</div>
+                    <small>Kommt bald</small>
+                </div>
+
+                <div class="module-card disabled">
+                    <span class="module-icon">💸</span>
+                    <div class="module-title">Finanzen</div>
+                    <small>Kommt bald</small>
+                </div>
+
             </div>
         </div>
 
-        <div id="view-stats" class="view-section">
-            <article class="card">
-                <header>📊 Analyse: Alex</header>
-                <div id="stats-alex">Lade...</div>
-            </article>
 
-            <article class="card">
-                <header>📊 Analyse: Fred</header>
-                <div id="stats-fred">Lade...</div>
-            </article>
+        <div id="view-cleaning" class="app-view">
             
-            <article class="card">
-                <header>📜 Verlauf (Letzte 5)</header>
-                <ul id="history-list" style="font-size: 0.8em; padding-left: 20px; margin-bottom: 0;"></ul>
-            </article>
-        </div>
+            <div class="back-header">
+                <button class="back-btn" onclick="openModule('main-menu')">❮</button>
+                <h2 style="margin:0; font-size: 1.2rem;">Putz-Planer</h2>
+            </div>
 
-        <details style="margin-top: 30px;">
-            <summary style="color:#666; font-size:0.9em;">Admin Einstellungen</summary>
-            <button class="danger" onclick="resetDatabase()">⚠️ Neustart & Datenbank Reset</button>
-        </details>
+            <div id="sub-dashboard" class="sub-view active">
+                <article class="card">
+                    <header>🏆 Highscore</header>
+                    <div class="grid">
+                        <div style="text-align: center;">
+                            <div class="score-label">Alex</div>
+                            <div id="score-me" class="score-display">-</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="score-label">Fred</div>
+                            <div id="score-him" class="score-display">-</div>
+                        </div>
+                    </div>
+                </article>
+
+                <div id="task-container">Lade Daten...</div>
+            </div>
+
+            <div id="sub-stats" class="sub-view">
+                <article class="card">
+                    <header>📊 Analyse: Alex</header>
+                    <div id="stats-alex">Lade...</div>
+                </article>
+                <article class="card">
+                    <header>📊 Analyse: Fred</header>
+                    <div id="stats-fred">Lade...</div>
+                </article>
+                <article class="card">
+                    <header>📜 Verlauf</header>
+                    <ul id="history-list" style="font-size: 0.8em; padding-left: 20px;"></ul>
+                </article>
+                
+                <details style="margin-top: 30px;">
+                    <summary style="color:#666; font-size:0.9em;">Admin</summary>
+                    <button class="danger" onclick="resetDatabase()">⚠️ Datenbank Reset</button>
+                </details>
+            </div>
+
+            <div class="bottom-nav">
+                <div class="nav-item active" onclick="switchSubTab('dashboard', this)">
+                    <span style="display:block; font-size:1.5em;">🧹</span> Plan
+                </div>
+                <div class="nav-item" onclick="switchSubTab('stats', this)">
+                    <span style="display:block; font-size:1.5em;">📈</span> Stats
+                </div>
+            </div>
+        </div>
 
     </main>
-
-    <div class="bottom-nav">
-        <div class="nav-item active" onclick="switchTab('dashboard', this)">
-            <span class="nav-icon">🏠</span>
-            Home
-        </div>
-        <div class="nav-item" onclick="switchTab('stats', this)">
-            <span class="nav-icon">📈</span>
-            Statistik
-        </div>
-    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
@@ -125,18 +178,20 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- TAB NAVIGATION ---
-        window.switchTab = (viewId, element) => {
-            // Hide all views
-            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+        // --- NAVIGATION ---
+        window.openModule = (moduleId) => {
+            document.querySelectorAll('.app-view').forEach(el => el.classList.remove('active'));
+            document.getElementById('view-' + moduleId).classList.add('active');
+        };
+
+        window.switchSubTab = (subId, element) => {
+            document.querySelectorAll('.sub-view').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            
-            // Show selected
-            document.getElementById('view-' + viewId).classList.add('active');
+            document.getElementById('sub-' + subId).classList.add('active');
             element.classList.add('active');
         };
 
-        // --- PUNKTE REGELN ---
+        // --- LOGIK ---
         function calculatePoints(daysPassed) {
             if (daysPassed < 4) return 15;
             if (daysPassed < 6) return 10;
@@ -145,80 +200,95 @@
             return -5;
         }
 
-        // --- STATISTIK BERECHNUNG ---
-        function calculateStats(history, userId) {
-            const userHistory = history.filter(h => h.user === userId);
+        function getStatusInfo(lastCleanedDate) {
+            const now = new Date();
+            const daysPassed = Math.floor((now - lastCleanedDate.toDate()) / (1000 * 60 * 60 * 24));
             
-            if (userHistory.length === 0) return `<div style="text-align:center; color:#999;">Noch keine Daten</div>`;
-
-            const totalCleans = userHistory.length;
+            let color = "#00b894"; // Grün
+            if(daysPassed >= 4) color = "#e17055"; // Orange
+            if(daysPassed >= 7) color = "#d63031"; // Rot
             
-            // Durchschnittliche Tage
-            const totalDays = userHistory.reduce((sum, entry) => sum + entry.daysTaken, 0);
-            const avgDays = (totalDays / totalCleans).toFixed(1);
+            return { days: daysPassed, color: color };
+        }
 
-            // Verspätungen (Alles >= 7 Tage)
-            const lates = userHistory.filter(h => h.daysTaken >= 7).length;
-
-            // Schnellster Putz
-            const fastest = Math.min(...userHistory.map(h => h.daysTaken));
+        // --- RENDERERS ---
+        function renderDashboardWidget(data) {
+            const alexStatus = getStatusInfo(data.users.me.lastCleaned);
+            const fredStatus = getStatusInfo(data.users.him.lastCleaned);
 
             return `
-                <div class="stat-row"><span>🧹 Mal geputzt:</span> <span class="stat-val">${totalCleans}</span></div>
-                <div class="stat-row"><span>⏱️ Ø Dauer:</span> <span class="stat-val">${avgDays} Tage</span></div>
-                <div class="stat-row"><span>🐢 Verspätet (>7T):</span> <span class="stat-val" style="color:${lates > 0 ? '#d63031' : 'inherit'}">${lates}x</span></div>
-                <div class="stat-row"><span>🏎️ Rekord:</span> <span class="stat-val">${fastest} Tage</span></div>
+                <div class="widget-row">
+                    <span>Alex: ${data.users.me.currentTask}</span>
+                    <span><span class="status-dot" style="background:${alexStatus.color}"></span> ${alexStatus.days}T</span>
+                </div>
+                <div class="widget-row">
+                    <span>Fred: ${data.users.him.currentTask}</span>
+                    <span><span class="status-dot" style="background:${fredStatus.color}"></span> ${fredStatus.days}T</span>
+                </div>
             `;
         }
 
-        // --- UI RENDERING DASHBOARD ---
         function renderUserCard(userId, userName, userData) {
-            const lastCleaned = userData.lastCleaned.toDate(); 
-            const now = new Date();
-            const diffTime = now - lastCleaned;
-            const daysPassed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            const status = getStatusInfo(userData.lastCleaned);
+            const pointsNow = calculatePoints(status.days);
             
-            const pointsNow = calculatePoints(daysPassed);
-            
-            let statusColor = "color-good";
-            let bgColor = "bg-good";
-            let statusText = "Alles im grünen Bereich";
-            let borderColor = "#00b894";
+            let statusText = "Alles gut";
+            let borderColor = status.color;
 
-            if(daysPassed >= 4) { statusColor = "color-warn"; bgColor = "bg-warn"; statusText = "Zeit läuft ab..."; borderColor = "#e17055"; }
-            if(daysPassed >= 7) { statusColor = "color-bad"; bgColor = "bg-bad"; statusText = "ÜBERFÄLLIG!"; borderColor = "#d63031"; }
+            if(status.days >= 4) statusText = "Zeit läuft ab...";
+            if(status.days >= 7) statusText = "ÜBERFÄLLIG!";
 
-            let progress = (daysPassed / 7) * 100;
+            let progress = (status.days / 7) * 100;
             if(progress > 100) progress = 100;
 
             let html = `<article class="card" style="border-left: 6px solid ${borderColor}">`;
             html += `<header style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:15px;">`;
             html += `<span style="font-size:1.1em; color:#333;">👤 <b>${userName}</b></span>`;
-            html += `<span style="font-size:0.8em; color:#888;">Seit ${daysPassed} Tagen</span>`;
+            html += `<span style="font-size:0.8em; color:#888;">Seit ${status.days} Tagen</span>`;
             html += `</header>`;
             html += `<div class="task-title">${userData.currentTask}</div>`;
-            html += `<div class="deadline ${statusColor}">${statusText}</div>`;
-            html += `<div class="progress-container"><div class="progress-bar ${bgColor}" style="width: ${progress}%"></div></div>`;
+            html += `<div class="deadline" style="color:${borderColor}">${statusText}</div>`;
+            html += `<div class="progress-container"><div class="progress-bar" style="width: ${progress}%; background-color:${borderColor}"></div></div>`;
             html += `<div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;">`;
-            html += `<span style="color:#555;">Punkte möglich: <b class="${statusColor}">${pointsNow}</b></span>`;
-            html += `<button class="action-btn" onclick="window.completeTask('${userId}', ${pointsNow}, '${userData.currentTask}', ${daysPassed})">Erledigt ✅</button>`;
+            html += `<span style="color:#555;">Punkte: <b style="color:${borderColor}">${pointsNow}</b></span>`;
+            html += `<button class="action-btn" onclick="window.completeTask('${userId}', ${pointsNow}, '${userData.currentTask}', ${status.days})">Erledigt ✅</button>`;
             html += `</div>`;
             html += `</article>`;
             return html;
         }
 
-        // --- HAUPTFUNKTION ---
+        function calculateStats(history, userId) {
+            const userHistory = history.filter(h => h.user === userId);
+            if (userHistory.length === 0) return `<div style="text-align:center; color:#999;">Noch keine Daten</div>`;
+
+            const totalCleans = userHistory.length;
+            const totalDays = userHistory.reduce((sum, entry) => sum + entry.daysTaken, 0);
+            const avgDays = (totalDays / totalCleans).toFixed(1);
+            const lates = userHistory.filter(h => h.daysTaken >= 7).length;
+            const fastest = Math.min(...userHistory.map(h => h.daysTaken));
+
+            return `
+                <div class="stat-row"><span>🧹 Anzahl:</span> <span class="stat-val">${totalCleans}</span></div>
+                <div class="stat-row"><span>⏱️ Ø Dauer:</span> <span class="stat-val">${avgDays} Tage</span></div>
+                <div class="stat-row"><span>🐢 Verspätet:</span> <span class="stat-val" style="color:${lates > 0 ? '#d63031' : 'inherit'}">${lates}x</span></div>
+                <div class="stat-row"><span>🏎️ Rekord:</span> <span class="stat-val">${fastest} Tage</span></div>
+            `;
+        }
+
+        // --- MAIN APP LOAD ---
         function loadApp() {
             onSnapshot(doc(db, "wg_app", "state_v3"), (docSnap) => {
                 if (!docSnap.exists()) {
-                    document.getElementById('task-container').innerHTML = "<p style='text-align:center;'>Bitte Reset drücken!</p>";
+                    initDatabase(); // Auto-Init wenn noch nichts da ist
                     return;
                 }
 
                 const data = docSnap.data();
-                const history = data.history || [];
                 
-                // 1. Dashboard Rendern
+                // 1. DASHBOARD WIDGET UPDATEN
+                document.getElementById('dashboard-summary').innerHTML = renderDashboardWidget(data);
+
+                // 2. PUTZ APP RENDERN
                 document.getElementById('score-me').innerText = data.users.me.score;
                 document.getElementById('score-him').innerText = data.users.him.score;
 
@@ -227,25 +297,24 @@
                 html += renderUserCard("him", "Fred", data.users.him);
                 document.getElementById('task-container').innerHTML = html;
 
-                // 2. Statistik Rendern
+                // 3. STATS RENDERN
+                const history = data.history || [];
                 document.getElementById('stats-alex').innerHTML = calculateStats(history, "me");
                 document.getElementById('stats-fred').innerHTML = calculateStats(history, "him");
-
-                // 3. Verlauf Liste Rendern (letzte 5)
+                
                 const recentHistory = [...history].reverse().slice(0, 5);
                 let historyHtml = "";
                 recentHistory.forEach(h => {
                     const name = h.user === "me" ? "Alex" : "Fred";
-                    historyHtml += `<li><b>${name}</b>: ${h.task} (${h.points} Pkt in ${h.daysTaken} Tagen)</li>`;
+                    historyHtml += `<li><b>${name}</b>: ${h.task} (${h.points} Pkt / ${h.daysTaken}T)</li>`;
                 });
-                if(history.length === 0) historyHtml = "<li>Noch keine Einträge</li>";
-                document.getElementById('history-list').innerHTML = historyHtml;
+                document.getElementById('history-list').innerHTML = historyHtml || "<li>Leer</li>";
             });
         }
 
-        // --- TASK ERLEDIGEN ---
+        // --- AKTIONEN ---
         window.completeTask = async (userId, pointsToAdd, currentTaskName, daysTaken) => {
-            if(!confirm(`Aufgabe "${currentTaskName}" wirklich erledigt?`)) return;
+            if(!confirm(`Aufgabe erledigt?`)) return;
 
             const docRef = doc(db, "wg_app", "state_v3");
             const docSnap = await getDoc(docRef);
@@ -255,49 +324,28 @@
             const nextTask = (currentTaskName === "Bad putzen") ? "Küche putzen" : "Bad putzen";
             const newScore = currentUserData.score + pointsToAdd;
 
-            // Update User State
             const newUserData = {
                 score: newScore,
                 currentTask: nextTask,
                 lastCleaned: Timestamp.now() 
             };
 
-            // Historie Eintrag erstellen
-            const historyEntry = {
-                user: userId,
-                task: currentTaskName,
-                points: pointsToAdd,
-                daysTaken: daysTaken,
-                date: Timestamp.now()
-            };
-
-            // Bestehende History laden und neuen Eintrag hinzufügen
+            const historyEntry = { user: userId, task: currentTaskName, points: pointsToAdd, daysTaken: daysTaken, date: Timestamp.now() };
             const newHistory = data.history ? [...data.history, historyEntry] : [historyEntry];
 
-            await updateDoc(docRef, {
-                [`users.${userId}`]: newUserData,
-                history: newHistory
-            });
+            await updateDoc(docRef, { [`users.${userId}`]: newUserData, history: newHistory });
         };
 
-        // --- INITIALISIERUNG (NEU V3) ---
         async function initDatabase() {
-            console.log("Erstelle V3 Struktur...");
             await setDoc(doc(db, "wg_app", "state_v3"), {
                 users: {
                     me: { score: 0, currentTask: "Bad putzen", lastCleaned: Timestamp.now() },
                     him: { score: 0, currentTask: "Küche putzen", lastCleaned: Timestamp.now() }
                 },
-                history: [] // Leere Historie für Statistiken
+                history: []
             });
         }
-
-        window.resetDatabase = async () => {
-            if(confirm("ACHTUNG: Alles wird gelöscht (auch Statistiken)!")) {
-                await initDatabase();
-                location.reload();
-            }
-        }
+        window.resetDatabase = async () => { if(confirm("Reset?")) { await initDatabase(); location.reload(); } }
 
         loadApp();
     </script>
