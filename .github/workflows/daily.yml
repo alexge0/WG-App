@@ -1,0 +1,30 @@
+name: Putz-Check
+
+on:
+  schedule:
+    # Läuft jeden Tag um 09:00 UTC (ca. 10:00 oder 11:00 Uhr in DE)
+    - cron: '0 9 * * *'
+  # Erlaubt dir, es manuell zu testen (Button "Run workflow")
+  workflow_dispatch:
+
+jobs:
+  check-cleaning:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code laden
+        uses: actions/checkout@v3
+
+      - name: Node.js installieren
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Abhängigkeiten installieren
+        run: npm install
+
+      - name: Bot starten
+        env:
+          FIREBASE_CREDS: ${{ secrets.FIREBASE_CREDS }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node bot.js
