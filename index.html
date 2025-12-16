@@ -1,31 +1,86 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>WG Putz-Commander</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
     <style>
-        body { padding: 10px; background-color: #11191f; }
-        .card { background-color: #1e262e; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .score-display { font-size: 2.5em; font-weight: bold; text-align: center; color: #00d26a; }
-        .task-title { font-size: 1.2em; font-weight: bold; margin-bottom: 5px; }
-        .deadline { font-size: 0.9em; color: #888; margin-bottom: 10px; }
+        /* Helles, freundliches Design */
+        body { 
+            padding: 10px; 
+            background-color: #f0f2f5; 
+            color: #1d1d1d;
+        }
         
-        /* Fortschrittsbalken Design */
-        .progress-container { width: 100%; background-color: #333; border-radius: 10px; height: 10px; margin-top: 5px; overflow: hidden; }
+        h1 { 
+            text-align: center; 
+            font-size: 1.5rem; 
+            margin-bottom: 20px; 
+            color: #333;
+        }
+
+        .card { 
+            background-color: #ffffff; 
+            border-radius: 15px; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+            border: 1px solid #e0e0e0;
+        }
+
+        .score-display { 
+            font-size: 2.5em; 
+            font-weight: bold; 
+            text-align: center; 
+            color: #2d3436; 
+        }
+
+        .task-title { 
+            font-size: 1.3em; 
+            font-weight: bold; 
+            margin-bottom: 5px; 
+            color: #000;
+        }
+
+        .deadline { 
+            font-size: 0.9em; 
+            font-weight: bold;
+            margin-bottom: 10px; 
+        }
+        
+        /* Fortschrittsbalken Hintergrund heller */
+        .progress-container { 
+            width: 100%; 
+            background-color: #e0e0e0; 
+            border-radius: 10px; 
+            height: 12px; 
+            margin-top: 10px; 
+            overflow: hidden; 
+        }
         .progress-bar { height: 100%; transition: width 0.5s; }
 
-        /* Farben */
-        .color-good { color: #00d26a; }
-        .bg-good { background-color: #00d26a; }
-        .color-warn { color: #f4a261; }
-        .bg-warn { background-color: #f4a261; }
-        .color-bad { color: #e76f51; }
-        .bg-bad { background-color: #e76f51; }
+        /* Angepasste Farben für bessere Lesbarkeit auf Weiß */
+        .color-good { color: #00b894; }
+        .bg-good { background-color: #00b894; }
+        
+        .color-warn { color: #e17055; }
+        .bg-warn { background-color: #e17055; }
+        
+        .color-bad { color: #d63031; }
+        .bg-bad { background-color: #d63031; }
 
-        h1 { text-align: center; font-size: 1.5rem; margin-bottom: 30px; }
-        button.danger { background-color: #e63946; border: none; opacity: 0.7; font-size: 0.8rem; margin-top: 10px;}
+        /* Namen über dem Score */
+        .score-label {
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.8em;
+            color: #636e72;
+            font-weight: bold;
+        }
+
+        button.danger { background-color: #d63031; border: none; opacity: 0.8; font-size: 0.8rem; margin-top: 10px;}
+        button.action-btn { background-color: #0984e3; border: none; width: auto; padding: 8px 20px; font-size: 0.9em; margin-bottom: 0; }
     </style>
 </head>
 <body>
@@ -37,22 +92,22 @@
             <header>🏆 Highscore</header>
             <div class="grid">
                 <div style="text-align: center;">
-                    <small>ICH</small>
+                    <div class="score-label">Alex</div>
                     <div id="score-me" class="score-display">-</div>
                 </div>
                 <div style="text-align: center;">
-                    <small>ER</small>
+                    <div class="score-label">Fred</div>
                     <div id="score-him" class="score-display">-</div>
                 </div>
             </div>
         </article>
 
         <div id="task-container">
-            <p aria-busy="true">Verbinde mit Datenbank...</p>
+            <p aria-busy="true" style="color:#666; text-align:center;">Lade Putzplan...</p>
         </div>
 
         <details>
-            <summary>Einstellungen</summary>
+            <summary style="color:#666; font-size:0.9em;">Einstellungen</summary>
             <button class="danger" onclick="resetDatabase()">⚠️ Neustart (Reset)</button>
         </details>
 
@@ -63,7 +118,7 @@
         import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, Timestamp } 
         from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-        // --- DEINE ECHTEN FIREBASE DATEN ---
+        // --- DEINE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyDGus88p9qscEFHWbZrTGM3Ja6bgSX4IrQ",
             authDomain: "wg-app-388eb.firebaseapp.com",
@@ -78,15 +133,10 @@
 
         // --- PUNKTE REGELN ---
         function calculatePoints(daysPassed) {
-            // Tag 1 (0 Tage vergangen) bis Tag 4 (3.99 Tage vergangen)
             if (daysPassed < 4) return 15;
-            // Tag 5 bis 6
             if (daysPassed < 6) return 10;
-            // Tag 7
             if (daysPassed < 7) return 5;
-            // Tag 8
             if (daysPassed < 8) return 2;
-            // Tag 9+
             return -5;
         }
 
@@ -105,18 +155,29 @@
             let statusColor = "color-good";
             let bgColor = "bg-good";
             let statusText = "Alles im grünen Bereich";
+            let borderColor = "#00b894"; // Grün für Rand
 
-            if(daysPassed >= 4) { statusColor = "color-warn"; bgColor = "bg-warn"; statusText = "Zeit läuft ab..."; }
-            if(daysPassed >= 7) { statusColor = "color-bad"; bgColor = "bg-bad"; statusText = "ÜBERFÄLLIG!"; }
+            if(daysPassed >= 4) { 
+                statusColor = "color-warn"; 
+                bgColor = "bg-warn"; 
+                statusText = "Zeit läuft ab..."; 
+                borderColor = "#e17055";
+            }
+            if(daysPassed >= 7) { 
+                statusColor = "color-bad"; 
+                bgColor = "bg-bad"; 
+                statusText = "ÜBERFÄLLIG!"; 
+                borderColor = "#d63031";
+            }
 
             // Fortschrittsbalken
             let progress = (daysPassed / 7) * 100;
             if(progress > 100) progress = 100;
 
-            let html = `<article class="card" style="border-left: 5px solid var(--${statusColor.replace('color-', '')})">`;
-            html += `<header style="display:flex; justify-content:space-between; align-items:center;">`;
-            html += `<span>👤 <b>${userName}</b></span>`;
-            html += `<span style="font-size:0.8em; opacity:0.7">Seit ${daysPassed} Tagen</span>`;
+            let html = `<article class="card" style="border-left: 6px solid ${borderColor}">`;
+            html += `<header style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:15px;">`;
+            html += `<span style="font-size:1.1em; color:#333;">👤 <b>${userName}</b></span>`;
+            html += `<span style="font-size:0.8em; color:#888;">Seit ${daysPassed} Tagen</span>`;
             html += `</header>`;
             
             html += `<div class="task-title">${userData.currentTask}</div>`;
@@ -124,10 +185,10 @@
             
             html += `<div class="progress-container"><div class="progress-bar ${bgColor}" style="width: ${progress}%"></div></div>`;
             
-            html += `<div style="margin-top:15px; display:flex; justify-content:space-between; align-items:center;">`;
-            html += `<span>Punkte jetzt: <b class="${statusColor}">${pointsNow}</b></span>`;
+            html += `<div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;">`;
+            html += `<span style="color:#555;">Punkte möglich: <b class="${statusColor}">${pointsNow}</b></span>`;
             
-            html += `<button onclick="window.completeTask('${userId}', ${pointsNow}, '${userData.currentTask}')" style="width:auto; padding:5px 15px; font-size:0.9em; margin-bottom:0;">Erledigt ✅</button>`;
+            html += `<button class="action-btn" onclick="window.completeTask('${userId}', ${pointsNow}, '${userData.currentTask}')">Erledigt ✅</button>`;
             html += `</div>`;
             
             html += `</article>`;
@@ -138,7 +199,7 @@
         function loadDashboard() {
             onSnapshot(doc(db, "wg_app", "state_v2"), (docSnap) => {
                 if (!docSnap.exists()) {
-                    document.getElementById('task-container').innerHTML = "<p>Datenbank leer. Bitte unten auf 'Neustart' klicken!</p>";
+                    document.getElementById('task-container').innerHTML = "<p style='text-align:center;'>Datenbank leer. Bitte unten auf 'Neustart' klicken!</p>";
                     return;
                 }
 
@@ -148,15 +209,16 @@
                 document.getElementById('score-him').innerText = data.users.him.score;
 
                 let html = "";
-                html += renderUserCard("me", "ICH", data.users.me);
-                html += renderUserCard("him", "ER", data.users.him);
+                // Hier werden jetzt Alex und Fred angezeigt
+                html += renderUserCard("me", "Alex", data.users.me);
+                html += renderUserCard("him", "Fred", data.users.him);
                 document.getElementById('task-container').innerHTML = html;
             });
         }
 
         // --- AKTIONEN ---
         window.completeTask = async (userId, pointsToAdd, currentTaskName) => {
-            if(!confirm(`Aufgabe "${currentTaskName}" erledigt? Das gibt ${pointsToAdd} Punkte!`)) return;
+            if(!confirm(`Aufgabe "${currentTaskName}" wirklich erledigt?`)) return;
 
             const docRef = doc(db, "wg_app", "state_v2");
             const docSnap = await getDoc(docRef);
@@ -189,7 +251,7 @@
         }
 
         window.resetDatabase = async () => {
-            if(confirm("Alles auf Anfang setzen?")) {
+            if(confirm("Alles auf Anfang setzen? Punkte werden gelöscht!")) {
                 await initDatabase();
                 location.reload();
             }
