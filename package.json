@@ -1,0 +1,11 @@
+{
+  "name": "wg-bot",
+  "version": "1.0.0",
+  "description": "WG Putz Reminder",
+  "main": "bot.js",
+  "type": "module",
+  "dependencies": {
+    "firebase-admin": "^11.5.0",
+    "node-fetch": "^3.3.1"
+  }
+}
