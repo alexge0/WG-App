@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WG Putz-Commander</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <style>
+        /* Manuelle Styles für den Feinschliff */
+        body { padding: 10px; background-color: #11191f; }
+        .card { background-color: #1e262e; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .score-display { font-size: 2.5em; font-weight: bold; text-align: center; color: #00d26a; }
+        .task-title { font-size: 1.2em; font-weight: bold; margin-bottom: 5px; }
+        .deadline { font-size: 0.9em; color: #888; }
+        .points-badge { background: #333; padding: 2px 8px; border-radius: 5px; font-size: 0.8em; float: right; }
+        
+        /* Punkte-Farben */
+        .points-high { color: #00d26a; } /* Grün */
+        .points-mid { color: #f4a261; } /* Orange */
+        .points-low { color: #e76f51; } /* Rot */
+
+        h1 { text-align: center; font-size: 1.5rem; margin-bottom: 30px; }
+        button.primary { background-color: #007bff; border: none; }
+        button.danger { background-color: #e63946; border: none; opacity: 0.7; font-size: 0.8rem; margin-top: 10px;}
+    </style>
+</head>
+<body>
+
+    <main class="container">
+        <h1>🧹 WG Putz-Zentrale</h1>
+
+        <article class="card">
+            <header>🏆 Punktestand</header>
+            <div class="grid">
+                <div style="text-align: center;">
+                    <small>ICH</small>
+                    <div id="score-me" class="score-display">0</div>
+                </div>
+                <div style="text-align: center;">
+                    <small>ER</small>
+                    <div id="score-him" class="score-display">0</div>
+                </div>
+            </div>
+        </article>
+
+        <article class="card">
+            <header>⚡️ Aktuelle Woche (Woche <span id="week-number">...</span>)</header>
+            
+            <div id="task-container">
+                <p aria-busy="true">Lade Aufgaben...</p>
+            </div>
+        </article>
+
+        <details>
+            <summary>Entwickler-Tools</summary>
+            <button class="danger" onclick="resetDatabase()">⚠️ Datenbank komplett resetten</button>
+        </details>
+
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, Timestamp } 
+        from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // --- HIER DEINE FIREBASE CONFIG EINFÜGEN ---
+        // (Kopiere das Objekt aus der Firebase Konsole hier rein)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDGus88p9qscEFHWbZrTGM3Ja6bgSX4IrQ",
+            authDomain: "wg-app-388eb.firebaseapp.com",
+            projectId: "wg-app-388eb",
+            storageBucket: "wg-app-388eb.firebasestorage.app",
+            messagingSenderId: "146563504520",
+            appId: "1:146563504520:web:b4c23cd2f09f88788a423d",
+
+        };
+
+        // Initialisierung
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- KONFIGURATION ---
+        const USERS = {
+            me: "Ich (Apple)",
+            him: "Er (Android)"
+        };
+        
+        // Startdatum für Woche 1 (Referenzpunkt) - z.B. letzter Montag
+        // Passe das Datum an, wenn du willst, dass der Zyklus anders startet
+        const START_DATE = new Date('2023-01-01'); 
+
+        // --- LOGIK: PUNKTE BERECHNEN ---
+        function calculatePoints(daysPassed) {
+            // Tag 1 (0 Tage vergangen) bis Tag 4 (3 Tage vergangen)
+            if (daysPassed < 4) return 15;
+            // Tag 5-6
+            if (daysPassed < 6) return 10;
+            // Tag 7
+            if (daysPassed < 7) return 5;
+            // Tag 8
+            if (daysPassed < 8) return 2;
+            // Tag 9+ (Jeder weitere Tag zieht mehr ab oder bleibt bei -5, hier pauschal -5)
+            return -5;
+        }
+
+        // --- LOGIK: WELCHE WOCHE IST HEUTE? ---
+        function getCurrentWeekInfo() {
+            const now = new Date();
+            const diffTime = Math.abs(now - START_DATE);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+            const currentWeek = Math.ceil(diffDays / 7);
+            
+            // Berechne Starttag der aktuellen Woche
+            // Das ist etwas vereinfacht für das Beispiel
+            const weekStart = new Date(now);
+            const dayOfWeek = weekStart.getDay() || 7; // Sonntag = 7
+            weekStart.setDate(weekStart.getDate() - dayOfWeek + 1); // Montag der aktuellen Woche
+            weekStart.setHours(0,0,0,0);
+
+            return { weekNumber: currentWeek, weekStart: weekStart };
+        }
+
+        // --- UI AKTUALISIEREN ---
+        function renderTaskCard(taskId, taskName, assignedUser, isDone, doneDate, weekStart) {
+            const now = new Date();
+            // Wie viele Tage sind seit Montag vergangen?
+            const daysPassed = Math.floor((now - weekStart) / (1000 * 60 * 60 * 24));
+            const potentialPoints = calculatePoints(daysPassed);
+            
+            // Wer ist eingeloggt? (Hier simulieren wir einfach "Ich" als Standard)
+            // In einer echten App würde man hier einen Login bauen.
+            // Wir zeigen einfach alles an.
+
+            let html = `<div style="margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 15px;">`;
+            html += `<div class="task-title">${taskName} <span style="font-weight:normal; font-size:0.8em; color:#aaa;">(${assignedUser})</span></div>`;
+
+            if (isDone) {
+                html += `<small style="color:#00d26a">✅ Erledigt! (+ Punkte gespeichert)</small>`;
+            } else {
+                let colorClass = "points-high";
+                if(potentialPoints < 15) colorClass = "points-mid";
+                if(potentialPoints < 5) colorClass = "points-low";
+
+                html += `<div class="deadline">Tag ${daysPassed + 1} der Woche</div>`;
+                html += `<div>Mögliche Punkte: <span class="${colorClass}"><b>${potentialPoints}</b></span></div>`;
+                html += `<button onclick="window.completeTask('${taskId}', ${potentialPoints})" style="margin-top:10px;">Als erledigt markieren</button>`;
+            }
+            html += `</div>`;
+            return html;
+        }
+
+        // --- HAUPTFUNKTION: DATEN LADEN ---
+        async function loadDashboard() {
+            const { weekNumber, weekStart } = getCurrentWeekInfo();
+            document.getElementById('week-number').innerText = weekNumber;
+
+            // Datenbank "live" abhören
+            onSnapshot(doc(db, "wg_app", "state"), (docSnap) => {
+                if (!docSnap.exists()) {
+                    // Erster Start: Datenbank initialisieren
+                    initDatabase();
+                    return;
+                }
+
+                const data = docSnap.data();
+                document.getElementById('score-me').innerText = data.scores.me;
+                document.getElementById('score-him').innerText = data.scores.him;
+
+                // Aufgaben Logik (Wer muss was machen?)
+                // Ungerade Woche: Ich=Bad, Er=Küche
+                // Gerade Woche: Ich=Küche, Er=Bad
+                const isOddWeek = weekNumber % 2 !== 0;
+                
+                let myTask = isOddWeek ? "Bad putzen" : "Küche putzen";
+                let hisTask = isOddWeek ? "Küche putzen" : "Bad putzen";
+
+                // Prüfen ob für die aktuelle Woche schon erledigt
+                // Wir speichern erledigte Aufgaben im Format "week_X_user_task"
+                const myTaskKey = `week_${weekNumber}_me`;
+                const hisTaskKey = `week_${weekNumber}_him`;
+
+                const myTaskDone = data.completedTasks && data.completedTasks[myTaskKey];
+                const hisTaskDone = data.completedTasks && data.completedTasks[hisTaskKey];
+
+                let html = "";
+                html += renderTaskCard(myTaskKey, myTask, USERS.me, myTaskDone, null, weekStart);
+                html += renderTaskCard(hisTaskKey, hisTask, USERS.him, hisTaskDone, null, weekStart);
+                
+                document.getElementById('task-container').innerHTML = html;
+            });
+        }
+
+        // --- DATENBANK AKTIONEN ---
+        
+        // Aufgabe erledigen
+        window.completeTask = async (taskKey, points) => {
+            if(!confirm(`Bist du sicher? Das gibt ${points} Punkte!`)) return;
+
+            const userKey = taskKey.includes("_me") ? "me" : "him"; // Wer hat geklickt? (Vereinfacht)
+            
+            // Transaction um sicherzustellen, dass Punkte korrekt addiert werden
+            const docRef = doc(db, "wg_app", "state");
+            const docSnap = await getDoc(docRef);
+            const data = docSnap.data();
+
+            const newScore = data.scores[userKey] + points;
+            const newCompletedTasks = { ...data.completedTasks, [taskKey]: true };
+
+            await updateDoc(docRef, {
+                [`scores.${userKey}`]: newScore,
+                completedTasks: newCompletedTasks
+            });
+        };
+
+        // Initialisierung (wird beim allerersten Start ausgeführt)
+        async function initDatabase() {
+            console.log("Erstelle Datenbank-Struktur...");
+            await setDoc(doc(db, "wg_app", "state"), {
+                scores: { me: 0, him: 0 },
+                completedTasks: {} // Hier speichern wir z.B. "week_24_me": true
+            });
+        }
+
+        // Reset (für Tests)
+        window.resetDatabase = async () => {
+            if(confirm("Wirklich alles auf 0 setzen?")) {
+                await initDatabase();
+                location.reload();
+            }
+        }
+
+        // App starten
+        loadDashboard();
+
+    </script>
+</body>
+</html>
