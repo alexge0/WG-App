@@ -37,7 +37,11 @@
         .back-btn { background: none; border: none; font-size: 1.5rem; padding: 0 10px 0 0; color: #333; width: auto; }
         
         .card { background-color: #ffffff; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #e0e0e0; }
-        .score-display { font-size: 2.5em; font-weight: bold; text-align: center; color: #2d3436; }
+        
+        /* EDITABLE SCORE STYLES */
+        .score-display { font-size: 2.5em; font-weight: bold; text-align: center; color: #2d3436; cursor: pointer; position: relative; display: inline-block; }
+        .score-display:after { content: '✏️'; font-size: 0.3em; position: absolute; top: 0; right: -15px; opacity: 0.5; }
+        
         .score-label { text-transform: uppercase; letter-spacing: 1px; font-size: 0.8em; color: #636e72; font-weight: bold; }
         .task-title { font-size: 1.3em; font-weight: bold; margin-bottom: 5px; color: #000; }
         .deadline { font-size: 0.9em; font-weight: bold; margin-bottom: 10px; }
@@ -45,6 +49,13 @@
         .progress-bar { height: 100%; transition: width 0.5s; }
         .stat-row { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; font-size: 0.9em; }
         .stat-val { font-weight: bold; }
+
+        /* History Actions */
+        .history-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .history-actions { display: flex; gap: 10px; }
+        .history-btn { cursor: pointer; font-weight: bold; font-size: 1.1em; }
+        .btn-edit { color: #0984e3; }
+        .btn-del { color: #d63031; }
 
         /* SHOPPING LIST STYLES */
         .shop-input-group { display: flex; gap: 10px; margin-bottom: 20px; }
@@ -73,6 +84,7 @@
         button.action-btn { background-color: #0984e3; border: none; width: auto; padding: 8px 20px; font-size: 0.9em; margin-bottom: 0; }
         button.danger { background-color: #d63031; border: none; opacity: 0.8; font-size: 0.8rem; margin-top: 10px;}
         button.add-btn { background-color: #00b894; border: none; width: auto; margin-bottom: 0; }
+        button.secondary { background-color: #636e72; border: none; width: auto; font-size: 0.8em; padding: 5px 15px;}
     </style>
 </head>
 <body>
@@ -112,15 +124,15 @@
 
             <div id="sub-dashboard" class="sub-view active">
                 <article class="card">
-                    <header>🏆 Highscore</header>
+                    <header>🏆 Highscore <small style="font-weight:normal; font-size:0.6em; float:right;">(Klicken zum Bearbeiten)</small></header>
                     <div class="grid">
                         <div style="text-align: center;">
                             <div class="score-label">Alex</div>
-                            <div id="score-me" class="score-display">-</div>
+                            <div id="score-me" class="score-display" onclick="editScore('me')">-</div>
                         </div>
                         <div style="text-align: center;">
                             <div class="score-label">Fred</div>
-                            <div id="score-him" class="score-display">-</div>
+                            <div id="score-him" class="score-display" onclick="editScore('him')">-</div>
                         </div>
                     </div>
                 </article>
@@ -137,8 +149,11 @@
                     <div id="stats-fred">Lade...</div>
                 </article>
                 <article class="card">
-                    <header>📜 Verlauf</header>
-                    <ul id="history-list" style="font-size: 0.8em; padding-left: 20px;"></ul>
+                    <header>📜 Verlauf (Bearbeitbar)</header>
+                    <div id="history-list" style="font-size: 0.8em; padding-left: 5px;"></div>
+                    <div style="text-align:center; margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
+                        <button class="add-btn" onclick="addHistoryItem()">➕ Eintrag nachtragen</button>
+                    </div>
                 </article>
                 
                 <details style="margin-top: 30px;">
@@ -259,13 +274,14 @@
             element.classList.add('active');
         };
 
-        // --- HELPER ---
+        // --- HELPER (UPDATED LOGIC) ---
         function calculatePoints(daysPassed) {
             if (daysPassed < 4) return 15;
             if (daysPassed < 6) return 10;
             if (daysPassed < 7) return 5;
             if (daysPassed < 8) return 2;
-            return -5;
+            const overdueDays = daysPassed - 8;
+            return -5 - (overdueDays * 5);
         }
 
         function getStatusInfo(lastCleanedDate) {
@@ -277,9 +293,101 @@
             return { days: daysPassed, color: color };
         }
 
+        // --- HISTORY EDITING FUNCTIONS (NEU) ---
+
+        // 1. Eintrag bearbeiten
+        window.editHistoryItem = async (index) => {
+            const docRef = doc(db, "wg_app", "state_v3");
+            const docSnap = await getDoc(docRef);
+            const data = docSnap.data();
+            const item = data.history[index];
+
+            // Abfragen
+            const newTask = prompt("Aufgabe:", item.task);
+            if(newTask === null) return;
+            
+            const newPointsStr = prompt("Punkte:", item.points);
+            if(newPointsStr === null) return;
+            
+            const newDaysStr = prompt("Benötigte Tage:", item.daysTaken);
+            if(newDaysStr === null) return;
+
+            // Validieren
+            const newPoints = parseInt(newPointsStr);
+            const newDays = parseInt(newDaysStr);
+
+            if(isNaN(newPoints) || isNaN(newDays)) return alert("Bitte gültige Zahlen eingeben!");
+
+            // Update Array
+            const newHistory = [...data.history];
+            newHistory[index] = { 
+                ...item, 
+                task: newTask, 
+                points: newPoints, 
+                daysTaken: newDays 
+            };
+
+            await updateDoc(docRef, { history: newHistory });
+        };
+
+        // 2. Eintrag löschen
+        window.deleteHistoryItem = async (index) => {
+            if(!confirm("Eintrag wirklich löschen?")) return;
+            const docRef = doc(db, "wg_app", "state_v3");
+            const docSnap = await getDoc(docRef);
+            const data = docSnap.data();
+            const newHistory = [...data.history];
+            newHistory.splice(index, 1);
+            await updateDoc(docRef, { history: newHistory });
+        };
+
+        // 3. Eintrag manuell hinzufügen
+        window.addHistoryItem = async () => {
+            const userStr = prompt("Wer hat geputzt? (Tippe 'alex' oder 'fred')");
+            if(!userStr) return;
+            
+            let userId = "me"; // Default
+            if(userStr.toLowerCase().includes("fred")) userId = "him";
+            
+            const task = prompt("Welche Aufgabe?", "Bad putzen");
+            if(!task) return;
+
+            const pointsStr = prompt("Wie viele Punkte?", "15");
+            if(!pointsStr) return;
+            
+            const daysStr = prompt("Wie viele Tage gebraucht?", "3");
+            if(!daysStr) return;
+
+            const docRef = doc(db, "wg_app", "state_v3");
+            const docSnap = await getDoc(docRef);
+            const data = docSnap.data();
+
+            const historyEntry = { 
+                user: userId, 
+                task: task, 
+                points: parseInt(pointsStr), 
+                daysTaken: parseInt(daysStr), 
+                date: Timestamp.now() 
+            };
+            
+            const newHistory = data.history ? [...data.history, historyEntry] : [historyEntry];
+            await updateDoc(docRef, { history: newHistory });
+        };
+
+        // Score bearbeiten (Header)
+        window.editScore = async (userKey) => {
+            const currentScoreEl = document.getElementById(userKey === 'me' ? 'score-me' : 'score-him');
+            const currentVal = currentScoreEl.innerText;
+            const newValStr = prompt(`Neuer Punktestand für ${userKey === 'me' ? 'Alex' : 'Fred'}?`, currentVal);
+            if(newValStr === null) return;
+            const newVal = parseInt(newValStr);
+            if(isNaN(newVal)) return alert("Bitte eine Zahl eingeben!");
+            const docRef = doc(db, "wg_app", "state_v3");
+            await updateDoc(docRef, { [`users.${userKey}.score`]: newVal });
+        };
+
         // --- RENDERERS ---
         function renderDashboardWidget(data) {
-            // Putzen
             const alexStatus = getStatusInfo(data.users.me.lastCleaned);
             const fredStatus = getStatusInfo(data.users.him.lastCleaned);
             document.getElementById('dashboard-summary').innerHTML = `
@@ -292,8 +400,6 @@
                     <span><span class="status-dot" style="background:${fredStatus.color}"></span> ${fredStatus.days}T</span>
                 </div>
             `;
-
-            // Finanzen
             if(data.finance) {
                  let total = 0;
                  Object.values(data.finance.costs).forEach(c => {
@@ -305,8 +411,6 @@
             } else {
                 document.getElementById('fin-widget-summary').innerText = "Einrichtung nötig";
             }
-
-            // Einkaufsliste
             if(data.shopping) {
                 const count = data.shopping.list.length;
                 const text = count === 0 ? "Alles da ✅" : `<b>${count} Teile</b> fehlen`;
@@ -319,7 +423,6 @@
         function renderUserCard(userId, userName, userData) {
             const status = getStatusInfo(userData.lastCleaned);
             const pointsNow = calculatePoints(status.days);
-            
             let statusText = "Alles gut";
             let borderColor = status.color;
             if(status.days >= 4) statusText = "Zeit läuft ab...";
@@ -336,7 +439,7 @@
             html += `<div class="deadline" style="color:${borderColor}">${statusText}</div>`;
             html += `<div class="progress-container"><div class="progress-bar" style="width: ${progress}%; background-color:${borderColor}"></div></div>`;
             html += `<div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;">`;
-            html += `<span style="color:#555;">Punkte: <b style="color:${borderColor}">${pointsNow}</b></span>`;
+            html += `<span style="color:#555;">Mögliche Punkte: <b style="color:${borderColor}">${pointsNow}</b></span>`;
             html += `<button class="action-btn" onclick="window.completeTask('${userId}', ${pointsNow}, '${userData.currentTask}', ${status.days})">Erledigt ✅</button>`;
             html += `</div>`;
             html += `</article>`;
@@ -372,10 +475,8 @@
                 const displayVal = item.val; 
                 const calculationVal = isGEZ ? (item.val / 3) : item.val;
                 monthlyTotal += calculationVal;
-
                 const labels = { rent: "Kaltmiete", gas: "Gasabschlag", strom: "Strom", gez: "GEZ (Rundfunk)", internet: "Internet" };
                 const label = labels[key] || key;
-                
                 let dateText = `Abb: ${item.day}. des Monats`;
                 if(isGEZ) dateText = `Abb: ${item.day}. (Jan/Apr/Jul/Okt)`;
                 let valText = `${displayVal.toFixed(2)} €`;
@@ -434,7 +535,6 @@
             if(!data.shopping) return;
             const list = data.shopping.list || [];
             const log = data.shopping.log || [];
-
             // Liste
             let html = "";
             list.forEach((item, index) => {
@@ -447,7 +547,6 @@
             });
             if(list.length === 0) html = `<p style="text-align:center; color:#aaa; margin-top:20px;">Nichts zu kaufen 🍻</p>`;
             document.getElementById('shopping-list-container').innerHTML = html;
-
             // Log
             const recentLog = [...log].reverse().slice(0, 10);
             let logHtml = "";
@@ -461,14 +560,11 @@
             const input = document.getElementById('shop-input');
             const name = input.value.trim();
             if(!name) return;
-
             const docRef = doc(db, "wg_app", "state_v3");
             const docSnap = await getDoc(docRef);
             const data = docSnap.data();
-
             const currentList = data.shopping && data.shopping.list ? data.shopping.list : [];
             const newList = [...currentList, { name: name }];
-            
             await updateDoc(docRef, { "shopping.list": newList });
             input.value = ""; 
         };
@@ -480,19 +576,15 @@
             } else {
                 var buyer = "Alex";
             }
-
             const docRef = doc(db, "wg_app", "state_v3");
             const docSnap = await getDoc(docRef);
             const data = docSnap.data();
-
             const newList = [...data.shopping.list];
             newList.splice(index, 1);
-
             const now = new Date();
             const dateStr = now.toLocaleDateString('de-DE');
             const logEntry = { buyer: buyer, item: itemName, date: dateStr };
             const newLog = data.shopping.log ? [...data.shopping.log, logEntry] : [logEntry];
-
             await updateDoc(docRef, { "shopping.list": newList, "shopping.log": newLog });
         };
 
@@ -500,7 +592,6 @@
         function loadApp() {
             onSnapshot(doc(db, "wg_app", "state_v3"), (docSnap) => {
                 if (!docSnap.exists()) {
-                    // Fallback Init für komplett leere DB
                     initDatabase(); 
                     return;
                 }
@@ -520,13 +611,27 @@
                 const history = data.history || [];
                 document.getElementById('stats-alex').innerHTML = calculateStats(history, "me");
                 document.getElementById('stats-fred').innerHTML = calculateStats(history, "him");
-                const recentHistory = [...history].reverse().slice(0, 5);
+                
+                // HISTORY MIT EDIT & DELETE BUTTONS
                 let historyHtml = "";
-                recentHistory.forEach(h => {
-                    const name = h.user === "me" ? "Alex" : "Fred";
-                    historyHtml += `<li><b>${name}</b>: ${h.task} (${h.points} Pkt / ${h.daysTaken}T)</li>`;
-                });
-                document.getElementById('history-list').innerHTML = historyHtml || "<li>Leer</li>";
+                if(history.length > 0) {
+                    // Rückwärts loop, damit Indices stimmen und neueste oben
+                    for (let i = history.length - 1; i >= 0; i--) {
+                        const h = history[i];
+                        const name = h.user === "me" ? "Alex" : "Fred";
+                        historyHtml += `
+                            <div class="history-item">
+                                <div style="flex:1;"><b>${name}</b>: ${h.task} (${h.points} Pkt / ${h.daysTaken}T)</div>
+                                <div class="history-actions">
+                                    <span class="history-btn btn-edit" onclick="editHistoryItem(${i})">✎</span>
+                                    <span class="history-btn btn-del" onclick="deleteHistoryItem(${i})">✖</span>
+                                </div>
+                            </div>`;
+                    }
+                } else {
+                    historyHtml = "<p>Leer</p>";
+                }
+                document.getElementById('history-list').innerHTML = historyHtml;
 
                 // Finanzen
                 if(data.finance) renderFinance(data);
@@ -552,8 +657,6 @@
         };
 
         // --- MODULARE RESET FUNKTIONEN ---
-
-        // 1. NUR PUTZEN
         window.resetCleaning = async () => {
             if(!confirm("Nur Putzdaten & Statistiken löschen?")) return;
             const docRef = doc(db, "wg_app", "state_v3");
@@ -566,7 +669,6 @@
             });
         }
 
-        // 2. NUR FINANZEN
         window.resetFinance = async () => {
             if(!confirm("Nur Finanzen zurücksetzen?")) return;
             const docRef = doc(db, "wg_app", "state_v3");
@@ -584,15 +686,9 @@
             });
         }
 
-        // 3. NUR SHOPPING
         window.resetShopping = async () => {
             if(!confirm("Einkaufsliste leeren?")) return;
             const docRef = doc(db, "wg_app", "state_v3");
-            
-            // Falls das Modul noch gar nicht existiert (Update würde failen), müssen wir set mit merge nutzen oder update
-            // Da updateDoc failt wenn Feld nicht da ist, nutzen wir setDoc mit merge für "init" Charakter
-            // Aber hier wollen wir nur das Feld überschreiben.
-            // Safe way:
             await setDoc(docRef, {
                 shopping: {
                     list: [],
@@ -601,7 +697,6 @@
             }, { merge: true });
         }
 
-        // Init (nur falls DB komplett gelöscht wurde)
         async function initDatabase() {
             await setDoc(doc(db, "wg_app", "state_v3"), {
                 users: { me: { score: 0, currentTask: "...", lastCleaned: Timestamp.now() }, him: { score: 0, currentTask: "...", lastCleaned: Timestamp.now() } },
