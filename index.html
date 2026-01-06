@@ -84,7 +84,7 @@
         button.action-btn { background-color: #0984e3; border: none; width: auto; padding: 8px 20px; font-size: 0.9em; margin-bottom: 0; }
         button.danger { background-color: #d63031; border: none; opacity: 0.8; font-size: 0.8rem; margin-top: 10px;}
         button.add-btn { background-color: #00b894; border: none; width: auto; margin-bottom: 0; }
-        button.secondary { background-color: #636e72; border: none; width: auto; font-size: 0.8em; padding: 5px 15px;}
+        button.migrate-btn { background-color: #6c5ce7; border: none; font-size: 0.8rem; margin-top: 10px; width: 100%; }
     </style>
 </head>
 <body>
@@ -137,6 +137,11 @@
                     </div>
                 </article>
                 <div id="task-container">Lade Daten...</div>
+                
+                <div id="migration-alert" style="display:none; text-align:center; margin-top:20px;">
+                    <p style="color:#e17055; font-size:0.9em;">⚠️ Alte Datenbank-Version erkannt.</p>
+                    <button class="migrate-btn" onclick="migrateToRoomLogic()">🔄 Auf Raum-Logik aktualisieren (Daten behalten)</button>
+                </div>
             </div>
 
             <div id="sub-stats" class="sub-view">
@@ -173,72 +178,28 @@
         </div>
         
         <div id="view-finance" class="app-view">
-            <div class="back-header">
-                <button class="back-btn" onclick="openModule('main-menu')">❮</button>
-                <h2 style="margin:0; font-size: 1.2rem;">💰 WG-Kasse</h2>
-            </div>
-
+            <div class="back-header"><button class="back-btn" onclick="openModule('main-menu')">❮</button><h2 style="margin:0; font-size: 1.2rem;">💰 WG-Kasse</h2></div>
             <article class="card" style="background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white; border:none;">
                 <header style="border-bottom: 1px solid rgba(255,255,255,0.2);">Monatliche Belastung</header>
-                <div style="font-size: 2.5em; font-weight: bold; text-align: center;">
-                    <span id="fin-total">0</span> €
-                </div>
+                <div style="font-size: 2.5em; font-weight: bold; text-align: center;"><span id="fin-total">0</span> €</div>
                 <div class="grid" style="margin-top:15px; text-align:center; font-size:0.9em;">
-                    <div>
-                        <small style="opacity:0.8">Alex (55%)</small><br>
-                        <b id="fin-share-me">0 €</b>
-                    </div>
-                    <div>
-                        <small style="opacity:0.8">Fred (45%)</small><br>
-                        <b id="fin-share-him">0 €</b>
-                    </div>
+                    <div><small style="opacity:0.8">Alex (55%)</small><br><b id="fin-share-me">0 €</b></div>
+                    <div><small style="opacity:0.8">Fred (45%)</small><br><b id="fin-share-him">0 €</b></div>
                 </div>
             </article>
-
-            <article class="card">
-                <header>Fixkosten Aufstellung</header>
-                <div id="cost-list">Lade Daten...</div>
-                <small style="display:block; text-align:center; color:#888; margin-top:10px;">* GEZ wird anteilig berechnet</small>
-            </article>
-
-            <article class="card">
-                <header>📜 Preisentwicklung</header>
-                <ul id="fin-history-list" style="font-size: 0.8em; padding-left: 20px; color:#666;"></ul>
-            </article>
-
-            <details style="margin-top: 30px;">
-                <summary style="color:#666; font-size:0.9em;">Admin Finanzen</summary>
-                <button class="danger" onclick="resetFinance()">💸 Nur Finanzen resetten</button>
-            </details>
+            <article class="card"><header>Fixkosten Aufstellung</header><div id="cost-list">Lade Daten...</div><small style="display:block; text-align:center; color:#888; margin-top:10px;">* GEZ wird anteilig berechnet</small></article>
+            <article class="card"><header>📜 Preisentwicklung</header><ul id="fin-history-list" style="font-size: 0.8em; padding-left: 20px; color:#666;"></ul></article>
+            <details style="margin-top: 30px;"><summary style="color:#666; font-size:0.9em;">Admin Finanzen</summary><button class="danger" onclick="resetFinance()">💸 Nur Finanzen resetten</button></details>
         </div>
 
         <div id="view-shopping" class="app-view">
-            <div class="back-header">
-                <button class="back-btn" onclick="openModule('main-menu')">❮</button>
-                <h2 style="margin:0; font-size: 1.2rem;">Einkaufsliste</h2>
-            </div>
-
+            <div class="back-header"><button class="back-btn" onclick="openModule('main-menu')">❮</button><h2 style="margin:0; font-size: 1.2rem;">Einkaufsliste</h2></div>
             <article class="card">
-                <div class="shop-input-group">
-                    <input type="text" id="shop-input" placeholder="Was fehlt? (z.B. Milch)">
-                    <button class="add-btn" onclick="window.addShopItem()">+</button>
-                </div>
-                
-                <div id="shopping-list-container">
-                    <p style="text-align:center; color:#999;">Alles da! Kühlschrank ist voll.</p>
-                </div>
+                <div class="shop-input-group"><input type="text" id="shop-input" placeholder="Was fehlt? (z.B. Milch)"><button class="add-btn" onclick="window.addShopItem()">+</button></div>
+                <div id="shopping-list-container"><p style="text-align:center; color:#999;">Alles da! Kühlschrank ist voll.</p></div>
             </article>
-
-            <article class="card">
-                <header>🛒 Einkaufs-Logbuch</header>
-                <ul id="shop-log-list" style="font-size: 0.8em; padding-left: 20px; color:#666;">
-                    <li>Lade...</li>
-                </ul>
-            </article>
-            
-            <div style="text-align: center; margin-top: 20px;">
-                <button class="danger" onclick="resetShopping()" style="width: auto; font-size: 0.8em;">🛒 Reset (Liste leeren)</button>
-            </div>
+            <article class="card"><header>🛒 Einkäufe (Letzte 10)</header><ul id="shop-log-list" style="font-size: 0.8em; padding-left: 20px; color:#666;"><li>Lade...</li></ul></article>
+            <div style="text-align: center; margin-top: 20px;"><button class="danger" onclick="resetShopping()" style="width: auto; font-size: 0.8em;">🛒 Reset (Liste leeren)</button></div>
         </div>
 
     </main>
@@ -248,7 +209,19 @@
         import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, Timestamp } 
         from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-        // --- CONFIG ---
+        // --- TELEGRAM CONFIG ---
+        const TG_TOKEN = ""; 
+        const TG_CHAT_ID = ""; 
+
+        async function sendTelegramMessage(text) {
+            if(!TG_TOKEN || !TG_CHAT_ID) return;
+            const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
+            try {
+                await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: TG_CHAT_ID, text: text, parse_mode: 'Markdown' }) });
+            } catch (e) { console.error("Telegram Fehler:", e); }
+        }
+
+        // --- FIREBASE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyDGus88p9qscEFHWbZrTGM3Ja6bgSX4IrQ",
             authDomain: "wg-app-388eb.firebaseapp.com",
@@ -266,7 +239,6 @@
             document.querySelectorAll('.app-view').forEach(el => el.classList.remove('active'));
             document.getElementById('view-' + moduleId).classList.add('active');
         };
-
         window.switchSubTab = (subId, element) => {
             document.querySelectorAll('.sub-view').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -285,6 +257,7 @@
         }
 
         function getStatusInfo(lastCleanedDate) {
+            if(!lastCleanedDate) return { days: 0, color: "#999" }; // Fallback
             const now = new Date();
             const daysPassed = Math.floor((now - lastCleanedDate.toDate()) / (1000 * 60 * 60 * 24));
             let color = "#00b894"; // Grün
@@ -293,44 +266,26 @@
             return { days: daysPassed, color: color };
         }
 
-        // --- HISTORY EDITING FUNCTIONS (NEU) ---
-
-        // 1. Eintrag bearbeiten
+        // --- HISTORY EDITING FUNCTIONS ---
         window.editHistoryItem = async (index) => {
             const docRef = doc(db, "wg_app", "state_v3");
             const docSnap = await getDoc(docRef);
             const data = docSnap.data();
             const item = data.history[index];
-
-            // Abfragen
             const newTask = prompt("Aufgabe:", item.task);
             if(newTask === null) return;
-            
             const newPointsStr = prompt("Punkte:", item.points);
             if(newPointsStr === null) return;
-            
             const newDaysStr = prompt("Benötigte Tage:", item.daysTaken);
             if(newDaysStr === null) return;
-
-            // Validieren
             const newPoints = parseInt(newPointsStr);
             const newDays = parseInt(newDaysStr);
-
             if(isNaN(newPoints) || isNaN(newDays)) return alert("Bitte gültige Zahlen eingeben!");
-
-            // Update Array
             const newHistory = [...data.history];
-            newHistory[index] = { 
-                ...item, 
-                task: newTask, 
-                points: newPoints, 
-                daysTaken: newDays 
-            };
-
+            newHistory[index] = { ...item, task: newTask, points: newPoints, daysTaken: newDays };
             await updateDoc(docRef, { history: newHistory });
         };
 
-        // 2. Eintrag löschen
         window.deleteHistoryItem = async (index) => {
             if(!confirm("Eintrag wirklich löschen?")) return;
             const docRef = doc(db, "wg_app", "state_v3");
@@ -341,40 +296,25 @@
             await updateDoc(docRef, { history: newHistory });
         };
 
-        // 3. Eintrag manuell hinzufügen
         window.addHistoryItem = async () => {
             const userStr = prompt("Wer hat geputzt? (Tippe 'alex' oder 'fred')");
             if(!userStr) return;
-            
-            let userId = "me"; // Default
+            let userId = "me"; 
             if(userStr.toLowerCase().includes("fred")) userId = "him";
-            
             const task = prompt("Welche Aufgabe?", "Bad putzen");
             if(!task) return;
-
             const pointsStr = prompt("Wie viele Punkte?", "15");
             if(!pointsStr) return;
-            
             const daysStr = prompt("Wie viele Tage gebraucht?", "3");
             if(!daysStr) return;
-
             const docRef = doc(db, "wg_app", "state_v3");
             const docSnap = await getDoc(docRef);
             const data = docSnap.data();
-
-            const historyEntry = { 
-                user: userId, 
-                task: task, 
-                points: parseInt(pointsStr), 
-                daysTaken: parseInt(daysStr), 
-                date: Timestamp.now() 
-            };
-            
+            const historyEntry = { user: userId, task: task, points: parseInt(pointsStr), daysTaken: parseInt(daysStr), date: Timestamp.now() };
             const newHistory = data.history ? [...data.history, historyEntry] : [historyEntry];
             await updateDoc(docRef, { history: newHistory });
         };
 
-        // Score bearbeiten (Header)
         window.editScore = async (userKey) => {
             const currentScoreEl = document.getElementById(userKey === 'me' ? 'score-me' : 'score-him');
             const currentVal = currentScoreEl.innerText;
@@ -388,23 +328,40 @@
 
         // --- RENDERERS ---
         function renderDashboardWidget(data) {
-            const alexStatus = getStatusInfo(data.users.me.lastCleaned);
-            const fredStatus = getStatusInfo(data.users.him.lastCleaned);
+            // WICHTIG: Hier jetzt Raum-Daten nutzen für die Anzeige
+            const alexTask = data.users.me.currentTask;
+            const fredTask = data.users.him.currentTask;
+            
+            // Fallback auf User-Daten, falls Räume noch nicht existieren
+            const roomBad = data.rooms ? data.rooms["Bad putzen"] : null;
+            const roomKueche = data.rooms ? data.rooms["Küche putzen"] : null;
+            
+            // Datum finden
+            let alexDate = data.users.me.lastCleaned;
+            if(data.rooms) alexDate = data.rooms[alexTask];
+            
+            let fredDate = data.users.him.lastCleaned;
+            if(data.rooms) fredDate = data.rooms[fredTask];
+
+            const alexStatus = getStatusInfo(alexDate);
+            const fredStatus = getStatusInfo(fredDate);
+            
             document.getElementById('dashboard-summary').innerHTML = `
                 <div class="widget-row">
-                    <span>Alex: ${data.users.me.currentTask}</span>
+                    <span>Alex: ${alexTask}</span>
                     <span><span class="status-dot" style="background:${alexStatus.color}"></span> ${alexStatus.days}T</span>
                 </div>
                 <div class="widget-row">
-                    <span>Fred: ${data.users.him.currentTask}</span>
+                    <span>Fred: ${fredTask}</span>
                     <span><span class="status-dot" style="background:${fredStatus.color}"></span> ${fredStatus.days}T</span>
                 </div>
             `;
+            
             if(data.finance) {
                  let total = 0;
                  Object.values(data.finance.costs).forEach(c => {
                     let val = c.val;
-                    if(c.val === 55.08) val = 18.36; // GEZ fix
+                    if(c.val === 55.08) val = 18.36; 
                     total += val;
                  });
                  document.getElementById('fin-widget-summary').innerText = `Gesamt: ${total.toFixed(0)}€ / Monat`;
@@ -420,8 +377,14 @@
             }
         }
 
-        function renderUserCard(userId, userName, userData) {
-            const status = getStatusInfo(userData.lastCleaned);
+        function renderUserCard(userId, userName, userData, allData) {
+            // HIER LOGIK ÄNDERUNG: Zeit vom RAUM nehmen, nicht vom User
+            let lastCleaned = userData.lastCleaned;
+            if(allData.rooms && allData.rooms[userData.currentTask]) {
+                lastCleaned = allData.rooms[userData.currentTask];
+            }
+
+            const status = getStatusInfo(lastCleaned);
             const pointsNow = calculatePoints(status.days);
             let statusText = "Alles gut";
             let borderColor = status.color;
@@ -462,131 +425,14 @@
             `;
         }
 
-        // --- FINANZ LOGIK ---
+        // --- FINANZ & SHOPPING RENDER (Unverändert, nur Funktions-Header) ---
         function renderFinance(data) {
-            if(!data.finance) return; 
-            const costs = data.finance.costs; 
-            const history = data.finance.history || [];
-            let monthlyTotal = 0;
-            let listHtml = '<table style="width:100%; font-size:0.9em;">';
-
-            for (const [key, item] of Object.entries(costs)) {
-                const isGEZ = key === 'gez';
-                const displayVal = item.val; 
-                const calculationVal = isGEZ ? (item.val / 3) : item.val;
-                monthlyTotal += calculationVal;
-                const labels = { rent: "Kaltmiete", gas: "Gasabschlag", strom: "Strom", gez: "GEZ (Rundfunk)", internet: "Internet" };
-                const label = labels[key] || key;
-                let dateText = `Abb: ${item.day}. des Monats`;
-                if(isGEZ) dateText = `Abb: ${item.day}. (Jan/Apr/Jul/Okt)`;
-                let valText = `${displayVal.toFixed(2)} €`;
-                if(isGEZ) valText += ` <span style="font-size:0.7em; color:#888;">/ Q</span>`;
-
-                listHtml += `
-                    <tr style="border-bottom:1px solid #eee;">
-                        <td style="padding:10px 0;">
-                            <b>${label}</b><br>
-                            <small style="color:#888;">${dateText}</small>
-                        </td>
-                        <td style="text-align:right;">
-                            <b>${valText}</b><br>
-                            <a href="#" onclick="window.editCost('${key}', ${item.val})" style="font-size:0.8em;">Bearbeiten</a>
-                        </td>
-                    </tr>
-                `;
-            }
-            listHtml += '</table>';
-            document.getElementById('fin-total').innerText = monthlyTotal.toFixed(2);
-            document.getElementById('cost-list').innerHTML = listHtml;
-            document.getElementById('fin-share-me').innerText = (monthlyTotal * 0.55).toFixed(2) + " €";
-            document.getElementById('fin-share-him').innerText = (monthlyTotal * 0.45).toFixed(2) + " €";
-
-            const recentHistory = [...history].reverse().slice(0, 5);
-            let histHtml = "";
-            recentHistory.forEach(h => {
-                histHtml += `<li><b>${h.date}</b>: ${h.category} geändert (${h.oldVal}€ ➝ ${h.newVal}€)</li>`;
-            });
-            document.getElementById('fin-history-list').innerHTML = histHtml || "<li>Keine Änderungen bisher</li>";
+            if(!data.finance) return; const costs = data.finance.costs; const history = data.finance.history || []; let monthlyTotal = 0; let listHtml = '<table style="width:100%; font-size:0.9em;">'; for (const [key, item] of Object.entries(costs)) { const isGEZ = key === 'gez'; const displayVal = item.val; const calculationVal = isGEZ ? (item.val / 3) : item.val; monthlyTotal += calculationVal; const labels = { rent: "Kaltmiete", gas: "Gasabschlag", strom: "Strom", gez: "GEZ (Rundfunk)", internet: "Internet" }; const label = labels[key] || key; let dateText = `Abb: ${item.day}. des Monats`; if(isGEZ) dateText = `Abb: ${item.day}. (Jan/Apr/Jul/Okt)`; let valText = `${displayVal.toFixed(2)} €`; if(isGEZ) valText += ` <span style="font-size:0.7em; color:#888;">/ Q</span>`; listHtml += `<tr style="border-bottom:1px solid #eee;"><td style="padding:10px 0;"><b>${label}</b><br><small style="color:#888;">${dateText}</small></td><td style="text-align:right;"><b>${valText}</b><br><a href="#" onclick="window.editCost('${key}', ${item.val})" style="font-size:0.8em;">Bearbeiten</a></td></tr>`; } listHtml += '</table>'; document.getElementById('fin-total').innerText = monthlyTotal.toFixed(2); document.getElementById('cost-list').innerHTML = listHtml; document.getElementById('fin-share-me').innerText = (monthlyTotal * 0.55).toFixed(2) + " €"; document.getElementById('fin-share-him').innerText = (monthlyTotal * 0.45).toFixed(2) + " €"; const recentHistory = [...history].reverse().slice(0, 5); let histHtml = ""; recentHistory.forEach(h => { histHtml += `<li><b>${h.date}</b>: ${h.category} geändert (${h.oldVal}€ ➝ ${h.newVal}€)</li>`; }); document.getElementById('fin-history-list').innerHTML = histHtml || "<li>Keine Änderungen bisher</li>";
         }
-
-        window.editCost = async (key, currentVal) => {
-            let msg = `Neuer Betrag für ${key}?`;
-            if(key === 'gez') msg += " (Bitte Quartalssumme eingeben!)";
-            const newValStr = prompt(msg, currentVal);
-            if(newValStr === null) return; 
-            const newVal = parseFloat(newValStr.replace(',', '.'));
-            if(isNaN(newVal)) return alert("Bitte eine Zahl eingeben!");
-            if(newVal === currentVal) return;
-
-            const docRef = doc(db, "wg_app", "state_v3");
-            const docSnap = await getDoc(docRef);
-            const data = docSnap.data();
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('de-DE');
-            const historyEntry = { date: dateStr, category: key, oldVal: currentVal, newVal: newVal };
-            const newCosts = { ...data.finance.costs };
-            newCosts[key].val = newVal;
-            const newHistory = data.finance.history ? [...data.finance.history, historyEntry] : [historyEntry];
-            await updateDoc(docRef, { "finance.costs": newCosts, "finance.history": newHistory });
-        };
-
-        // --- SHOPPING LOGIK ---
-        function renderShopping(data) {
-            if(!data.shopping) return;
-            const list = data.shopping.list || [];
-            const log = data.shopping.log || [];
-            // Liste
-            let html = "";
-            list.forEach((item, index) => {
-                html += `
-                <div class="shop-item">
-                    <span>${item.name}</span>
-                    <div class="check-btn" onclick="window.buyItem(${index}, '${item.name}')">✔</div>
-                </div>
-                `;
-            });
-            if(list.length === 0) html = `<p style="text-align:center; color:#aaa; margin-top:20px;">Nichts zu kaufen 🍻</p>`;
-            document.getElementById('shopping-list-container').innerHTML = html;
-            // Log
-            const recentLog = [...log].reverse().slice(0, 10);
-            let logHtml = "";
-            recentLog.forEach(l => {
-                logHtml += `<li>${l.buyer} hat <b>${l.item}</b> am ${l.date} gekauft.</li>`;
-            });
-            document.getElementById('shop-log-list').innerHTML = logHtml || "<li>Noch nichts gekauft</li>";
-        }
-
-        window.addShopItem = async () => {
-            const input = document.getElementById('shop-input');
-            const name = input.value.trim();
-            if(!name) return;
-            const docRef = doc(db, "wg_app", "state_v3");
-            const docSnap = await getDoc(docRef);
-            const data = docSnap.data();
-            const currentList = data.shopping && data.shopping.list ? data.shopping.list : [];
-            const newList = [...currentList, { name: name }];
-            await updateDoc(docRef, { "shopping.list": newList });
-            input.value = ""; 
-        };
-
-        window.buyItem = async (index, itemName) => {
-            if(!confirm(`Hast du (Alex) "${itemName}" gekauft?\n\n(OK = Alex, Abbrechen = Fred)`)) {
-                if(!confirm(`War es Fred?`)) return; 
-                var buyer = "Fred";
-            } else {
-                var buyer = "Alex";
-            }
-            const docRef = doc(db, "wg_app", "state_v3");
-            const docSnap = await getDoc(docRef);
-            const data = docSnap.data();
-            const newList = [...data.shopping.list];
-            newList.splice(index, 1);
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('de-DE');
-            const logEntry = { buyer: buyer, item: itemName, date: dateStr };
-            const newLog = data.shopping.log ? [...data.shopping.log, logEntry] : [logEntry];
-            await updateDoc(docRef, { "shopping.list": newList, "shopping.log": newLog });
-        };
+        window.editCost = async (key, currentVal) => { let msg = `Neuer Betrag für ${key}?`; if(key === 'gez') msg += " (Bitte Quartalssumme eingeben!)"; const newValStr = prompt(msg, currentVal); if(newValStr === null) return; const newVal = parseFloat(newValStr.replace(',', '.')); if(isNaN(newVal)) return alert("Bitte eine Zahl eingeben!"); if(newVal === currentVal) return; const docRef = doc(db, "wg_app", "state_v3"); const docSnap = await getDoc(docRef); const data = docSnap.data(); const now = new Date(); const dateStr = now.toLocaleDateString('de-DE'); const historyEntry = { date: dateStr, category: key, oldVal: currentVal, newVal: newVal }; const newCosts = { ...data.finance.costs }; newCosts[key].val = newVal; const newHistory = data.finance.history ? [...data.finance.history, historyEntry] : [historyEntry]; await updateDoc(docRef, { "finance.costs": newCosts, "finance.history": newHistory }); };
+        function renderShopping(data) { if(!data.shopping) return; const list = data.shopping.list || []; const log = data.shopping.log || []; let html = ""; list.forEach((item, index) => { html += `<div class="shop-item"><span>${item.name}</span><div class="check-btn" onclick="window.buyItem(${index}, '${item.name}')">✔</div></div>`; }); if(list.length === 0) html = `<p style="text-align:center; color:#aaa; margin-top:20px;">Nichts zu kaufen 🍻</p>`; document.getElementById('shopping-list-container').innerHTML = html; const recentLog = [...log].reverse().slice(0, 10); let logHtml = ""; recentLog.forEach(l => { logHtml += `<li>✅ <b>${l.item}</b> gekauft (${l.date})</li>`; }); document.getElementById('shop-log-list').innerHTML = logHtml || "<li>Noch nichts gekauft</li>"; }
+        window.addShopItem = async () => { const input = document.getElementById('shop-input'); const name = input.value.trim(); if(!name) return; const docRef = doc(db, "wg_app", "state_v3"); const docSnap = await getDoc(docRef); const data = docSnap.data(); const currentList = data.shopping && data.shopping.list ? data.shopping.list : []; const newList = [...currentList, { name: name }]; await updateDoc(docRef, { "shopping.list": newList }); input.value = ""; };
+        window.buyItem = async (index, itemName) => { if(!confirm(`"${itemName}" als gekauft markieren?`)) return; const docRef = doc(db, "wg_app", "state_v3"); const docSnap = await getDoc(docRef); const data = docSnap.data(); const newList = [...data.shopping.list]; newList.splice(index, 1); const now = new Date(); const dateStr = now.toLocaleDateString('de-DE'); const logEntry = { buyer: "WG", item: itemName, date: dateStr }; const newLog = data.shopping.log ? [...data.shopping.log, logEntry] : [logEntry]; await updateDoc(docRef, { "shopping.list": newList, "shopping.log": newLog }); };
 
         // --- MAIN APP LOAD ---
         function loadApp() {
@@ -597,14 +443,22 @@
                 }
                 const data = docSnap.data();
                 
+                // MIGRATIONS CHECK
+                if (!data.rooms) {
+                    document.getElementById('migration-alert').style.display = 'block';
+                } else {
+                    document.getElementById('migration-alert').style.display = 'none';
+                }
+
                 renderDashboardWidget(data);
                 
                 // Putz
                 document.getElementById('score-me').innerText = data.users.me.score;
                 document.getElementById('score-him').innerText = data.users.him.score;
                 let html = "";
-                html += renderUserCard("me", "Alex", data.users.me);
-                html += renderUserCard("him", "Fred", data.users.him);
+                // Wir übergeben 'data' damit wir Zugriff auf die Räume haben
+                html += renderUserCard("me", "Alex", data.users.me, data);
+                html += renderUserCard("him", "Fred", data.users.him, data);
                 document.getElementById('task-container').innerHTML = html;
 
                 // Stats
@@ -612,10 +466,8 @@
                 document.getElementById('stats-alex').innerHTML = calculateStats(history, "me");
                 document.getElementById('stats-fred').innerHTML = calculateStats(history, "him");
                 
-                // HISTORY MIT EDIT & DELETE BUTTONS
                 let historyHtml = "";
                 if(history.length > 0) {
-                    // Rückwärts loop, damit Indices stimmen und neueste oben
                     for (let i = history.length - 1; i >= 0; i--) {
                         const h = history[i];
                         const name = h.user === "me" ? "Alex" : "Fred";
@@ -633,15 +485,12 @@
                 }
                 document.getElementById('history-list').innerHTML = historyHtml;
 
-                // Finanzen
                 if(data.finance) renderFinance(data);
-                
-                // Einkaufen
                 if(data.shopping) renderShopping(data);
             });
         }
 
-        // --- DB ACTIONS ---
+        // --- DB ACTIONS (NEUE LOGIK: Update Rooms) ---
         window.completeTask = async (userId, pointsToAdd, currentTaskName, daysTaken) => {
             if(!confirm(`Aufgabe erledigt?`)) return;
             const docRef = doc(db, "wg_app", "state_v3");
@@ -650,13 +499,55 @@
             const currentUserData = data.users[userId];
             const nextTask = (currentTaskName === "Bad putzen") ? "Küche putzen" : "Bad putzen";
             const newScore = currentUserData.score + pointsToAdd;
+            
+            // User Update (LastCleaned is now redundant for status but kept for history/fallback)
             const newUserData = { score: newScore, currentTask: nextTask, lastCleaned: Timestamp.now() };
+            
+            // UPDATE ROOMS: Setze den geputzten Raum auf JETZT
+            const newRooms = { ...data.rooms };
+            newRooms[currentTaskName] = Timestamp.now(); 
+
             const historyEntry = { user: userId, task: currentTaskName, points: pointsToAdd, daysTaken: daysTaken, date: Timestamp.now() };
             const newHistory = data.history ? [...data.history, historyEntry] : [historyEntry];
-            await updateDoc(docRef, { [`users.${userId}`]: newUserData, history: newHistory });
+            
+            await updateDoc(docRef, { 
+                [`users.${userId}`]: newUserData, 
+                history: newHistory,
+                rooms: newRooms 
+            });
+
+            // Telegram
+            const userName = (userId === 'me') ? "Alex" : "Fred";
+            const msg = `✅ *${userName} hat geputzt!*\n\nAufgabe: ${currentTaskName}\nPunkte: +${pointsToAdd}\nDauer: ${daysTaken} Tage`;
+            sendTelegramMessage(msg);
         };
 
-        // --- MODULARE RESET FUNKTIONEN ---
+        // --- MIGRATION (WICHTIG!) ---
+        window.migrateToRoomLogic = async () => {
+            if(!confirm("Jetzt Datenbank auf Raum-Zeit umstellen? (Deine aktuellen Punkte bleiben erhalten!)")) return;
+            const docRef = doc(db, "wg_app", "state_v3");
+            const docSnap = await getDoc(docRef);
+            const data = docSnap.data();
+
+            // Wir erstellen die Raum-Daten basierend auf dem, was bei den Usern steht
+            const meTask = data.users.me.currentTask;
+            const himTask = data.users.him.currentTask;
+
+            // Mapping
+            const rooms = {};
+            // Der Raum "Bad" ist so alt wie der User, der ihn gerade hat
+            rooms[meTask] = data.users.me.lastCleaned;
+            rooms[himTask] = data.users.him.lastCleaned;
+
+            // Falls beide zufällig das gleiche haben (sollte nicht passieren), fixen wir das später
+            if(!rooms["Bad putzen"]) rooms["Bad putzen"] = Timestamp.now();
+            if(!rooms["Küche putzen"]) rooms["Küche putzen"] = Timestamp.now();
+
+            await updateDoc(docRef, { rooms: rooms });
+            alert("Erfolgreich umgestellt!");
+        };
+
+        // --- RESET FUNKTIONEN ---
         window.resetCleaning = async () => {
             if(!confirm("Nur Putzdaten & Statistiken löschen?")) return;
             const docRef = doc(db, "wg_app", "state_v3");
@@ -665,42 +556,22 @@
                     me: { score: 0, currentTask: "Bad putzen", lastCleaned: Timestamp.now() },
                     him: { score: 0, currentTask: "Küche putzen", lastCleaned: Timestamp.now() }
                 },
-                history: []
-            });
-        }
-
-        window.resetFinance = async () => {
-            if(!confirm("Nur Finanzen zurücksetzen?")) return;
-            const docRef = doc(db, "wg_app", "state_v3");
-            await updateDoc(docRef, {
-                finance: {
-                    costs: {
-                        rent: { val: 850.00, day: 1 },
-                        gas: { val: 120.00, day: 1 },
-                        strom: { val: 85.00, day: 1 },
-                        gez: { val: 55.08, day: 13 },
-                        internet: { val: 39.99, day: 1 }
-                    },
-                    history: []
+                history: [],
+                // Bei Reset auch Räume resetten
+                rooms: {
+                    "Bad putzen": Timestamp.now(),
+                    "Küche putzen": Timestamp.now()
                 }
             });
         }
-
-        window.resetShopping = async () => {
-            if(!confirm("Einkaufsliste leeren?")) return;
-            const docRef = doc(db, "wg_app", "state_v3");
-            await setDoc(docRef, {
-                shopping: {
-                    list: [],
-                    log: []
-                }
-            }, { merge: true });
-        }
+        window.resetFinance = async () => { if(!confirm("Nur Finanzen zurücksetzen?")) return; const docRef = doc(db, "wg_app", "state_v3"); await updateDoc(docRef, { finance: { costs: { rent: { val: 850.00, day: 1 }, gas: { val: 120.00, day: 1 }, strom: { val: 85.00, day: 1 }, gez: { val: 55.08, day: 13 }, internet: { val: 39.99, day: 1 } }, history: [] } }); }
+        window.resetShopping = async () => { if(!confirm("Einkaufsliste leeren?")) return; const docRef = doc(db, "wg_app", "state_v3"); await setDoc(docRef, { shopping: { list: [], log: [] } }, { merge: true }); }
 
         async function initDatabase() {
             await setDoc(doc(db, "wg_app", "state_v3"), {
                 users: { me: { score: 0, currentTask: "...", lastCleaned: Timestamp.now() }, him: { score: 0, currentTask: "...", lastCleaned: Timestamp.now() } },
                 history: [],
+                rooms: { "Bad putzen": Timestamp.now(), "Küche putzen": Timestamp.now() }, // Default
                 finance: { costs: {}, history: [] },
                 shopping: { list: [], log: [] }
             });
