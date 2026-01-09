@@ -84,7 +84,7 @@
         button.action-btn { background-color: #0984e3; border: none; width: auto; padding: 8px 20px; font-size: 0.9em; margin-bottom: 0; }
         button.danger { background-color: #d63031; border: none; opacity: 0.8; font-size: 0.8rem; margin-top: 10px;}
         button.add-btn { background-color: #00b894; border: none; width: auto; margin-bottom: 0; }
-        button.migrate-btn { background-color: #6c5ce7; border: none; font-size: 0.8rem; margin-top: 10px; width: 100%; }
+        button.restore-btn { background-color: #0984e3; border: none; font-size: 0.8rem; margin-top: 10px; width: 100%; }
     </style>
 </head>
 <body>
@@ -137,11 +137,6 @@
                     </div>
                 </article>
                 <div id="task-container">Lade Daten...</div>
-                
-                <div id="migration-alert" style="display:none; text-align:center; margin-top:20px;">
-                    <p style="color:#e17055; font-size:0.9em;">⚠️ Alte Datenbank-Version erkannt.</p>
-                    <button class="migrate-btn" onclick="migrateToRoomLogic()">🔄 Auf Raum-Logik aktualisieren (Daten behalten)</button>
-                </div>
             </div>
 
             <div id="sub-stats" class="sub-view">
@@ -163,6 +158,7 @@
                 
                 <details style="margin-top: 30px;">
                     <summary style="color:#666; font-size:0.9em;">Admin Putzplan</summary>
+                    <button class="restore-btn" onclick="restoreManualData()">🛠️ Manuelle Datenwiederherstellung</button>
                     <button class="danger" onclick="resetCleaning()">🧹 Nur Putzdaten resetten</button>
                 </details>
             </div>
@@ -267,6 +263,37 @@
             if(daysPassed >= 4) color = "#e17055"; // Orange
             if(daysPassed >= 7) color = "#d63031"; // Rot
             return { days: daysPassed, color: color };
+        }
+
+        // --- MANUELLE WIEDERHERSTELLUNG (NEU) ---
+        window.restoreManualData = async () => {
+            if(!confirm("Daten manuell setzen?\nAlex=5 Pkt, Bad in 1T\nFred=15 Pkt, Küche in 2T")) return;
+
+            const now = new Date();
+            // Bad in 1 Tag fällig -> 7 Tage Zyklus -> Vor 6 Tagen geputzt
+            const badDate = new Date(now);
+            badDate.setDate(now.getDate() - 6);
+
+            // Küche in 2 Tagen fällig -> 7 Tage Zyklus -> Vor 5 Tagen geputzt
+            const kuecheDate = new Date(now);
+            kuecheDate.setDate(now.getDate() - 5);
+
+            const docRef = doc(db, "wg_app", "state_v3");
+            
+            // Wir nutzen setDoc mit merge, falls das Dokument beschädigt ist
+            await setDoc(docRef, {
+                users: {
+                    me: { score: 5, currentTask: "Bad putzen", lastCleaned: Timestamp.fromDate(badDate) },
+                    him: { score: 15, currentTask: "Küche putzen", lastCleaned: Timestamp.fromDate(kuecheDate) }
+                },
+                rooms: {
+                    "Bad putzen": Timestamp.fromDate(badDate),
+                    "Küche putzen": Timestamp.fromDate(kuecheDate)
+                }
+            }, { merge: true });
+
+            alert("Daten erfolgreich wiederhergestellt!");
+            location.reload();
         }
 
         // --- HISTORY FUNCTIONS ---
@@ -378,6 +405,7 @@
 
         function renderUserCard(userId, userName, userData, allData) {
             let lastCleaned = userData.lastCleaned;
+            // Raum-Logik Check
             if(allData.rooms && allData.rooms[userData.currentTask]) {
                 lastCleaned = allData.rooms[userData.currentTask];
             }
@@ -526,14 +554,6 @@
                     return;
                 }
                 const data = docSnap.data();
-                
-                // MIGRATIONS CHECK
-                if (!data.rooms) {
-                    document.getElementById('migration-alert').style.display = 'block';
-                } else {
-                    document.getElementById('migration-alert').style.display = 'none';
-                }
-
                 renderDashboardWidget(data);
                 
                 // Putz
@@ -587,7 +607,7 @@
             // User Update
             const newUserData = { score: newScore, currentTask: nextTask, lastCleaned: Timestamp.now() };
             
-            // UPDATE ROOMS
+            // UPDATE ROOMS: Setze den geputzten Raum auf JETZT
             const newRooms = { ...data.rooms };
             newRooms[currentTaskName] = Timestamp.now(); 
 
@@ -603,27 +623,6 @@
             const userName = (userId === 'me') ? "Alex" : "Fred";
             const msg = `✅ *${userName} hat geputzt!*\n\nAufgabe: ${currentTaskName}\nPunkte: +${pointsToAdd}\nDauer: ${daysTaken} Tage`;
             sendTelegramMessage(msg);
-        };
-
-        // --- MIGRATION ---
-        window.migrateToRoomLogic = async () => {
-            if(!confirm("Jetzt Datenbank auf Raum-Zeit umstellen? (Deine aktuellen Punkte bleiben erhalten!)")) return;
-            const docRef = doc(db, "wg_app", "state_v3");
-            const docSnap = await getDoc(docRef);
-            const data = docSnap.data();
-
-            const meTask = data.users.me.currentTask;
-            const himTask = data.users.him.currentTask;
-
-            const rooms = {};
-            rooms[meTask] = data.users.me.lastCleaned;
-            rooms[himTask] = data.users.him.lastCleaned;
-
-            if(!rooms["Bad putzen"]) rooms["Bad putzen"] = Timestamp.now();
-            if(!rooms["Küche putzen"]) rooms["Küche putzen"] = Timestamp.now();
-
-            await updateDoc(docRef, { rooms: rooms });
-            alert("Erfolgreich umgestellt!");
         };
 
         // --- RESET FUNKTIONEN ---
@@ -647,7 +646,7 @@
 
         async function initDatabase() {
             await setDoc(doc(db, "wg_app", "state_v3"), {
-                users: { me: { score: 0, currentTask: "...", lastCleaned: Timestamp.now() }, him: { score: 0, currentTask: "...", lastCleaned: Timestamp.now() } },
+                users: { me: { score: 0, currentTask: "Bad putzen", lastCleaned: Timestamp.now() }, him: { score: 0, currentTask: "Küche putzen", lastCleaned: Timestamp.now() } },
                 history: [],
                 rooms: { "Bad putzen": Timestamp.now(), "Küche putzen": Timestamp.now() },
                 finance: { costs: {}, history: [] },
