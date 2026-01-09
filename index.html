@@ -178,7 +178,10 @@
         </div>
         
         <div id="view-finance" class="app-view">
-            <div class="back-header"><button class="back-btn" onclick="openModule('main-menu')">❮</button><h2 style="margin:0; font-size: 1.2rem;">💰 WG-Kasse</h2></div>
+            <div class="back-header">
+                <button class="back-btn" onclick="openModule('main-menu')">❮</button>
+                <h2 style="margin:0; font-size: 1.2rem;">💰 WG-Kasse</h2>
+            </div>
             <article class="card" style="background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white; border:none;">
                 <header style="border-bottom: 1px solid rgba(255,255,255,0.2);">Monatliche Belastung</header>
                 <div style="font-size: 2.5em; font-weight: bold; text-align: center;"><span id="fin-total">0</span> €</div>
@@ -246,7 +249,7 @@
             element.classList.add('active');
         };
 
-        // --- HELPER (UPDATED LOGIC) ---
+        // --- HELPER ---
         function calculatePoints(daysPassed) {
             if (daysPassed < 4) return 15;
             if (daysPassed < 6) return 10;
@@ -257,7 +260,7 @@
         }
 
         function getStatusInfo(lastCleanedDate) {
-            if(!lastCleanedDate) return { days: 0, color: "#999" }; // Fallback
+            if(!lastCleanedDate) return { days: 0, color: "#999" };
             const now = new Date();
             const daysPassed = Math.floor((now - lastCleanedDate.toDate()) / (1000 * 60 * 60 * 24));
             let color = "#00b894"; // Grün
@@ -266,7 +269,7 @@
             return { days: daysPassed, color: color };
         }
 
-        // --- HISTORY EDITING FUNCTIONS ---
+        // --- HISTORY FUNCTIONS ---
         window.editHistoryItem = async (index) => {
             const docRef = doc(db, "wg_app", "state_v3");
             const docSnap = await getDoc(docRef);
@@ -328,20 +331,16 @@
 
         // --- RENDERERS ---
         function renderDashboardWidget(data) {
-            // WICHTIG: Hier jetzt Raum-Daten nutzen für die Anzeige
+            if (!data.users || !data.users.me) return;
+            
             const alexTask = data.users.me.currentTask;
             const fredTask = data.users.him.currentTask;
             
-            // Fallback auf User-Daten, falls Räume noch nicht existieren
-            const roomBad = data.rooms ? data.rooms["Bad putzen"] : null;
-            const roomKueche = data.rooms ? data.rooms["Küche putzen"] : null;
-            
-            // Datum finden
             let alexDate = data.users.me.lastCleaned;
-            if(data.rooms) alexDate = data.rooms[alexTask];
+            if(data.rooms && data.rooms[alexTask]) alexDate = data.rooms[alexTask];
             
             let fredDate = data.users.him.lastCleaned;
-            if(data.rooms) fredDate = data.rooms[fredTask];
+            if(data.rooms && data.rooms[fredTask]) fredDate = data.rooms[fredTask];
 
             const alexStatus = getStatusInfo(alexDate);
             const fredStatus = getStatusInfo(fredDate);
@@ -378,7 +377,6 @@
         }
 
         function renderUserCard(userId, userName, userData, allData) {
-            // HIER LOGIK ÄNDERUNG: Zeit vom RAUM nehmen, nicht vom User
             let lastCleaned = userData.lastCleaned;
             if(allData.rooms && allData.rooms[userData.currentTask]) {
                 lastCleaned = allData.rooms[userData.currentTask];
@@ -425,14 +423,100 @@
             `;
         }
 
-        // --- FINANZ & SHOPPING RENDER (Unverändert, nur Funktions-Header) ---
+        // --- FINANCE FUNCTIONS ---
         function renderFinance(data) {
-            if(!data.finance) return; const costs = data.finance.costs; const history = data.finance.history || []; let monthlyTotal = 0; let listHtml = '<table style="width:100%; font-size:0.9em;">'; for (const [key, item] of Object.entries(costs)) { const isGEZ = key === 'gez'; const displayVal = item.val; const calculationVal = isGEZ ? (item.val / 3) : item.val; monthlyTotal += calculationVal; const labels = { rent: "Kaltmiete", gas: "Gasabschlag", strom: "Strom", gez: "GEZ (Rundfunk)", internet: "Internet" }; const label = labels[key] || key; let dateText = `Abb: ${item.day}. des Monats`; if(isGEZ) dateText = `Abb: ${item.day}. (Jan/Apr/Jul/Okt)`; let valText = `${displayVal.toFixed(2)} €`; if(isGEZ) valText += ` <span style="font-size:0.7em; color:#888;">/ Q</span>`; listHtml += `<tr style="border-bottom:1px solid #eee;"><td style="padding:10px 0;"><b>${label}</b><br><small style="color:#888;">${dateText}</small></td><td style="text-align:right;"><b>${valText}</b><br><a href="#" onclick="window.editCost('${key}', ${item.val})" style="font-size:0.8em;">Bearbeiten</a></td></tr>`; } listHtml += '</table>'; document.getElementById('fin-total').innerText = monthlyTotal.toFixed(2); document.getElementById('cost-list').innerHTML = listHtml; document.getElementById('fin-share-me').innerText = (monthlyTotal * 0.55).toFixed(2) + " €"; document.getElementById('fin-share-him').innerText = (monthlyTotal * 0.45).toFixed(2) + " €"; const recentHistory = [...history].reverse().slice(0, 5); let histHtml = ""; recentHistory.forEach(h => { histHtml += `<li><b>${h.date}</b>: ${h.category} geändert (${h.oldVal}€ ➝ ${h.newVal}€)</li>`; }); document.getElementById('fin-history-list').innerHTML = histHtml || "<li>Keine Änderungen bisher</li>";
+            if(!data.finance) return;
+            const costs = data.finance.costs;
+            const history = data.finance.history || [];
+            let monthlyTotal = 0;
+            let listHtml = '<table style="width:100%; font-size:0.9em;">';
+            for (const [key, item] of Object.entries(costs)) {
+                const isGEZ = key === 'gez';
+                const displayVal = item.val;
+                const calculationVal = isGEZ ? (item.val / 3) : item.val;
+                monthlyTotal += calculationVal;
+                const labels = { rent: "Kaltmiete", gas: "Gasabschlag", strom: "Strom", gez: "GEZ (Rundfunk)", internet: "Internet" };
+                const label = labels[key] || key;
+                let dateText = `Abb: ${item.day}. des Monats`;
+                if(isGEZ) dateText = `Abb: ${item.day}. (Jan/Apr/Jul/Okt)`;
+                let valText = `${displayVal.toFixed(2)} €`;
+                if(isGEZ) valText += ` <span style="font-size:0.7em; color:#888;">/ Q</span>`;
+                listHtml += `<tr style="border-bottom:1px solid #eee;"><td style="padding:10px 0;"><b>${label}</b><br><small style="color:#888;">${dateText}</small></td><td style="text-align:right;"><b>${valText}</b><br><a href="#" onclick="window.editCost('${key}', ${item.val})" style="font-size:0.8em;">Bearbeiten</a></td></tr>`;
+            }
+            listHtml += '</table>';
+            document.getElementById('fin-total').innerText = monthlyTotal.toFixed(2);
+            document.getElementById('cost-list').innerHTML = listHtml;
+            document.getElementById('fin-share-me').innerText = (monthlyTotal * 0.55).toFixed(2) + " €";
+            document.getElementById('fin-share-him').innerText = (monthlyTotal * 0.45).toFixed(2) + " €";
+            const recentHistory = [...history].reverse().slice(0, 5);
+            let histHtml = "";
+            recentHistory.forEach(h => { histHtml += `<li><b>${h.date}</b>: ${h.category} geändert (${h.oldVal}€ ➝ ${h.newVal}€)</li>`; });
+            document.getElementById('fin-history-list').innerHTML = histHtml || "<li>Keine Änderungen bisher</li>";
         }
-        window.editCost = async (key, currentVal) => { let msg = `Neuer Betrag für ${key}?`; if(key === 'gez') msg += " (Bitte Quartalssumme eingeben!)"; const newValStr = prompt(msg, currentVal); if(newValStr === null) return; const newVal = parseFloat(newValStr.replace(',', '.')); if(isNaN(newVal)) return alert("Bitte eine Zahl eingeben!"); if(newVal === currentVal) return; const docRef = doc(db, "wg_app", "state_v3"); const docSnap = await getDoc(docRef); const data = docSnap.data(); const now = new Date(); const dateStr = now.toLocaleDateString('de-DE'); const historyEntry = { date: dateStr, category: key, oldVal: currentVal, newVal: newVal }; const newCosts = { ...data.finance.costs }; newCosts[key].val = newVal; const newHistory = data.finance.history ? [...data.finance.history, historyEntry] : [historyEntry]; await updateDoc(docRef, { "finance.costs": newCosts, "finance.history": newHistory }); };
-        function renderShopping(data) { if(!data.shopping) return; const list = data.shopping.list || []; const log = data.shopping.log || []; let html = ""; list.forEach((item, index) => { html += `<div class="shop-item"><span>${item.name}</span><div class="check-btn" onclick="window.buyItem(${index}, '${item.name}')">✔</div></div>`; }); if(list.length === 0) html = `<p style="text-align:center; color:#aaa; margin-top:20px;">Nichts zu kaufen 🍻</p>`; document.getElementById('shopping-list-container').innerHTML = html; const recentLog = [...log].reverse().slice(0, 10); let logHtml = ""; recentLog.forEach(l => { logHtml += `<li>✅ <b>${l.item}</b> gekauft (${l.date})</li>`; }); document.getElementById('shop-log-list').innerHTML = logHtml || "<li>Noch nichts gekauft</li>"; }
-        window.addShopItem = async () => { const input = document.getElementById('shop-input'); const name = input.value.trim(); if(!name) return; const docRef = doc(db, "wg_app", "state_v3"); const docSnap = await getDoc(docRef); const data = docSnap.data(); const currentList = data.shopping && data.shopping.list ? data.shopping.list : []; const newList = [...currentList, { name: name }]; await updateDoc(docRef, { "shopping.list": newList }); input.value = ""; };
-        window.buyItem = async (index, itemName) => { if(!confirm(`"${itemName}" als gekauft markieren?`)) return; const docRef = doc(db, "wg_app", "state_v3"); const docSnap = await getDoc(docRef); const data = docSnap.data(); const newList = [...data.shopping.list]; newList.splice(index, 1); const now = new Date(); const dateStr = now.toLocaleDateString('de-DE'); const logEntry = { buyer: "WG", item: itemName, date: dateStr }; const newLog = data.shopping.log ? [...data.shopping.log, logEntry] : [logEntry]; await updateDoc(docRef, { "shopping.list": newList, "shopping.log": newLog }); };
+
+        window.editCost = async (key, currentVal) => {
+            let msg = `Neuer Betrag für ${key}?`;
+            if(key === 'gez') msg += " (Bitte Quartalssumme eingeben!)";
+            const newValStr = prompt(msg, currentVal);
+            if(newValStr === null) return;
+            const newVal = parseFloat(newValStr.replace(',', '.'));
+            if(isNaN(newVal)) return alert("Bitte eine Zahl eingeben!");
+            if(newVal === currentVal) return;
+            const docRef = doc(db, "wg_app", "state_v3");
+            const docSnap = await getDoc(docRef);
+            const data = docSnap.data();
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('de-DE');
+            const historyEntry = { date: dateStr, category: key, oldVal: currentVal, newVal: newVal };
+            const newCosts = { ...data.finance.costs };
+            newCosts[key].val = newVal;
+            const newHistory = data.finance.history ? [...data.finance.history, historyEntry] : [historyEntry];
+            await updateDoc(docRef, { "finance.costs": newCosts, "finance.history": newHistory });
+        };
+
+        // --- SHOPPING FUNCTIONS ---
+        function renderShopping(data) {
+            if(!data.shopping) return;
+            const list = data.shopping.list || [];
+            const log = data.shopping.log || [];
+            let html = "";
+            list.forEach((item, index) => {
+                html += `<div class="shop-item"><span>${item.name}</span><div class="check-btn" onclick="window.buyItem(${index}, '${item.name}')">✔</div></div>`;
+            });
+            if(list.length === 0) html = `<p style="text-align:center; color:#aaa; margin-top:20px;">Nichts zu kaufen 🍻</p>`;
+            document.getElementById('shopping-list-container').innerHTML = html;
+            const recentLog = [...log].reverse().slice(0, 10);
+            let logHtml = "";
+            recentLog.forEach(l => { logHtml += `<li>✅ <b>${l.item}</b> gekauft (${l.date})</li>`; });
+            document.getElementById('shop-log-list').innerHTML = logHtml || "<li>Noch nichts gekauft</li>";
+        }
+
+        window.addShopItem = async () => {
+            const input = document.getElementById('shop-input');
+            const name = input.value.trim();
+            if(!name) return;
+            const docRef = doc(db, "wg_app", "state_v3");
+            const docSnap = await getDoc(docRef);
+            const data = docSnap.data();
+            const currentList = data.shopping && data.shopping.list ? data.shopping.list : [];
+            const newList = [...currentList, { name: name }];
+            await updateDoc(docRef, { "shopping.list": newList });
+            input.value = "";
+        };
+
+        window.buyItem = async (index, itemName) => {
+            if(!confirm(`"${itemName}" als gekauft markieren?`)) return;
+            const docRef = doc(db, "wg_app", "state_v3");
+            const docSnap = await getDoc(docRef);
+            const data = docSnap.data();
+            const newList = [...data.shopping.list];
+            newList.splice(index, 1);
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('de-DE');
+            const logEntry = { buyer: "WG", item: itemName, date: dateStr };
+            const newLog = data.shopping.log ? [...data.shopping.log, logEntry] : [logEntry];
+            await updateDoc(docRef, { "shopping.list": newList, "shopping.log": newLog });
+        };
 
         // --- MAIN APP LOAD ---
         function loadApp() {
@@ -500,10 +584,10 @@
             const nextTask = (currentTaskName === "Bad putzen") ? "Küche putzen" : "Bad putzen";
             const newScore = currentUserData.score + pointsToAdd;
             
-            // User Update (LastCleaned is now redundant for status but kept for history/fallback)
+            // User Update
             const newUserData = { score: newScore, currentTask: nextTask, lastCleaned: Timestamp.now() };
             
-            // UPDATE ROOMS: Setze den geputzten Raum auf JETZT
+            // UPDATE ROOMS
             const newRooms = { ...data.rooms };
             newRooms[currentTaskName] = Timestamp.now(); 
 
@@ -516,30 +600,25 @@
                 rooms: newRooms 
             });
 
-            // Telegram
             const userName = (userId === 'me') ? "Alex" : "Fred";
             const msg = `✅ *${userName} hat geputzt!*\n\nAufgabe: ${currentTaskName}\nPunkte: +${pointsToAdd}\nDauer: ${daysTaken} Tage`;
             sendTelegramMessage(msg);
         };
 
-        // --- MIGRATION (WICHTIG!) ---
+        // --- MIGRATION ---
         window.migrateToRoomLogic = async () => {
             if(!confirm("Jetzt Datenbank auf Raum-Zeit umstellen? (Deine aktuellen Punkte bleiben erhalten!)")) return;
             const docRef = doc(db, "wg_app", "state_v3");
             const docSnap = await getDoc(docRef);
             const data = docSnap.data();
 
-            // Wir erstellen die Raum-Daten basierend auf dem, was bei den Usern steht
             const meTask = data.users.me.currentTask;
             const himTask = data.users.him.currentTask;
 
-            // Mapping
             const rooms = {};
-            // Der Raum "Bad" ist so alt wie der User, der ihn gerade hat
             rooms[meTask] = data.users.me.lastCleaned;
             rooms[himTask] = data.users.him.lastCleaned;
 
-            // Falls beide zufällig das gleiche haben (sollte nicht passieren), fixen wir das später
             if(!rooms["Bad putzen"]) rooms["Bad putzen"] = Timestamp.now();
             if(!rooms["Küche putzen"]) rooms["Küche putzen"] = Timestamp.now();
 
@@ -557,7 +636,6 @@
                     him: { score: 0, currentTask: "Küche putzen", lastCleaned: Timestamp.now() }
                 },
                 history: [],
-                // Bei Reset auch Räume resetten
                 rooms: {
                     "Bad putzen": Timestamp.now(),
                     "Küche putzen": Timestamp.now()
@@ -571,7 +649,7 @@
             await setDoc(doc(db, "wg_app", "state_v3"), {
                 users: { me: { score: 0, currentTask: "...", lastCleaned: Timestamp.now() }, him: { score: 0, currentTask: "...", lastCleaned: Timestamp.now() } },
                 history: [],
-                rooms: { "Bad putzen": Timestamp.now(), "Küche putzen": Timestamp.now() }, // Default
+                rooms: { "Bad putzen": Timestamp.now(), "Küche putzen": Timestamp.now() },
                 finance: { costs: {}, history: [] },
                 shopping: { list: [], log: [] }
             });
