@@ -6,29 +6,46 @@
     <title>WG Zentrale</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
     <style>
-        /* --- GLOBAL DESIGN --- */
+        /* --- GLOBAL --- */
         body { padding: 10px; background-color: #f0f2f5; color: #1d1d1d; min-height: 100vh; padding-bottom: 80px;}
         h1 { text-align: center; font-size: 1.5rem; margin-bottom: 20px; color: #333; }
         
         .app-view { display: none; }
         .app-view.active { display: block; }
-        .card { background-color: #ffffff; border-radius: 15px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #e0e0e0; }
-        
-        /* HIGHSCORE BAR (Dezent) */
-        .highscore-bar { display: flex; justify-content: space-between; background: white; padding: 10px 20px; border-radius: 30px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #eee; }
-        .score-item { font-weight: bold; color: #555; }
-        .score-val { color: #0984e3; margin-left: 5px; }
 
-        /* ROOM CARD STYLES */
-        .room-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .room-title { display: flex; align-items: center; font-size: 1.2em; font-weight: bold; }
-        .room-icon { font-size: 1.5em; margin-right: 10px; }
+        /* --- DASHBOARD (STARTSEITE) --- */
+        .dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
         
-        /* Der Chip, der anzeigt wer dran ist */
-        .assignee-badge { background: #dfe6e9; color: #2d3436; padding: 5px 12px; border-radius: 15px; font-weight: bold; font-size: 0.85em; border: 1px solid #b2bec3; }
+        .module-card {
+            background: white; border-radius: 15px; padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #eee;
+            cursor: pointer; transition: transform 0.2s; position: relative; overflow: hidden;
+        }
+        .module-card:active { transform: scale(0.98); }
+        
+        .module-icon { font-size: 2.5em; margin-bottom: 10px; display: block; }
+        .module-title { font-weight: bold; font-size: 1.3em; margin-bottom: 5px; }
+        .widget-content { font-size: 0.9em; color: #666; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f0f0; }
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+
+        /* --- COMMON CARD STYLE --- */
+        .card { background-color: #ffffff; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #e0e0e0; }
+
+        /* --- HEADER & BACK BUTTON --- */
+        .back-header { display: flex; align-items: center; margin-bottom: 20px; }
+        .back-btn { background: none; border: none; font-size: 1.5rem; padding: 0 10px 0 0; color: #333; width: auto; }
+
+        /* --- SCORE DISPLAY (GROSS & EDITIERBAR) --- */
+        .score-display { font-size: 3em; font-weight: bold; text-align: center; color: #2d3436; cursor: pointer; position: relative; display: inline-block; line-height: 1; }
+        .score-display:after { content: '✏️'; font-size: 0.2em; position: absolute; top: 0; right: -15px; opacity: 0.3; }
+        .score-label { text-transform: uppercase; letter-spacing: 1px; font-size: 0.8em; color: #636e72; font-weight: bold; }
+
+        /* --- ROOM CARDS --- */
+        .room-header { display: flex; justify-content: space-between; align-items: center; }
+        .assignee-badge { background: #0984e3; color: white; padding: 5px 12px; border-radius: 15px; font-weight: bold; font-size: 0.9em; }
         
         .deadline { font-weight: bold; margin-top: 15px; font-size: 0.9em; }
-        .progress-container { width: 100%; background-color: #eee; border-radius: 10px; height: 8px; margin-top: 5px; overflow: hidden; }
+        .progress-container { width: 100%; background-color: #eee; border-radius: 10px; height: 10px; margin-top: 5px; overflow: hidden; }
         .progress-bar { height: 100%; transition: width 0.5s; }
 
         /* COLORS */
@@ -36,50 +53,97 @@
         .color-warn { color: #e17055; } .bg-warn { background-color: #e17055; }
         .color-bad { color: #d63031; } .bg-bad { background-color: #d63031; }
 
-        /* NAV */
-        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; border-top: 1px solid #ddd; display: flex; justify-content: space-around; padding: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 100; }
-        .nav-item { text-align: center; font-size: 0.9em; color: #888; cursor: pointer; flex: 1; }
-        .nav-item.active { color: #0984e3; font-weight: bold; }
-
+        /* BUTTONS */
         button.action-btn { background-color: #0984e3; border: none; width: 100%; margin-top: 20px; padding: 12px; font-weight: bold; }
         button.danger { background-color: #d63031; border: none; opacity: 0.8; font-size: 0.8rem; margin-top: 10px;}
+        button.add-btn { background-color: #00b894; border: none; width: auto; margin-bottom: 0; }
+
+        /* LISTS (Shopping & Finance) */
+        .shop-input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        .shop-input-group input { margin-bottom: 0; }
         
-        /* SHOPPING & FINANCE SIMPLE TABLE */
-        table { width: 100%; font-size: 0.9em; border-collapse: collapse; }
-        td { padding: 10px 0; border-bottom: 1px solid #eee; }
-        .check-btn { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #ddd; background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; float: right; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
+        .list-item:last-child { border-bottom: none; }
+        
+        .check-btn { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #ddd; background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; color:#00b894; font-weight:bold;}
+        .edit-link { font-size: 0.8em; color: #0984e3; text-decoration: none; cursor: pointer; margin-left: 10px; }
     </style>
 </head>
 <body>
 
     <main class="container">
         
-        <div id="view-cleaning" class="app-view active">
-            <h1>🧼 WG Putzplan</h1>
+        <div id="view-main-menu" class="app-view active">
+            <h1>🏠 WG Zentrale</h1>
+            
+            <div class="dashboard-grid">
+                
+                <div class="module-card" onclick="openModule('cleaning')">
+                    <span class="module-icon">🧹</span>
+                    <div class="module-title">Putzplan</div>
+                    <div class="widget-content" id="dashboard-summary">Lade...</div>
+                </div>
 
-            <div class="highscore-bar">
-                <div class="score-item">Alex: <span id="score-alex" class="score-val">0</span></div>
-                <div class="score-item">Fred: <span id="score-fred" class="score-val">0</span></div>
+                <div class="module-card" onclick="openModule('shopping')">
+                    <span class="module-icon">🛒</span>
+                    <div class="module-title">Einkaufsliste</div>
+                    <div class="widget-content" id="shop-widget-summary">Lade...</div>
+                </div>
+
+                <div class="module-card" onclick="openModule('finance')">
+                    <span class="module-icon">💸</span>
+                    <div class="module-title">Finanzen</div>
+                    <div class="widget-content" id="fin-widget-summary">Lade...</div>
+                </div>
+
+                <div class="module-card" onclick="openModule('stats')">
+                    <span class="module-icon">⚙️</span>
+                    <div class="module-title">Admin</div>
+                    <div class="widget-content">Verlauf & Reset</div>
+                </div>
+
             </div>
+        </div>
+
+        <div id="view-cleaning" class="app-view">
+            <div class="back-header">
+                <button class="back-btn" onclick="openModule('main-menu')">❮</button>
+                <h2 style="margin:0; font-size: 1.2rem;">Putz-Planer</h2>
+            </div>
+
+            <article class="card">
+                <header>🏆 Highscore <small style="float:right; font-weight:normal; font-size:0.7em;">(Klicken zum Ändern)</small></header>
+                <div class="grid">
+                    <div style="text-align: center;">
+                        <div class="score-label">Alex</div>
+                        <div id="score-alex" class="score-display" onclick="editScore('Alex')">-</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div class="score-label">Fred</div>
+                        <div id="score-fred" class="score-display" onclick="editScore('Fred')">-</div>
+                    </div>
+                </div>
+            </article>
 
             <div id="rooms-container">
                 <p aria-busy="true">Lade Plan...</p>
             </div>
-
-            <div id="setup-container" style="display:none; text-align:center; margin-top:20px;">
-                <button class="primary" onclick="startFresh()">🚀 Alles Neustarten (Alex=Bad, Fred=Küche)</button>
-            </div>
         </div>
 
         <div id="view-shopping" class="app-view">
-            <h1>🛒 Einkaufsliste</h1>
+            <div class="back-header">
+                <button class="back-btn" onclick="openModule('main-menu')">❮</button>
+                <h2 style="margin:0; font-size: 1.2rem;">Einkaufsliste</h2>
+            </div>
+
             <article class="card">
-                <div style="display:flex; gap:10px;">
+                <div class="shop-input-group">
                     <input type="text" id="shop-input" placeholder="Was fehlt?" style="margin-bottom:0;">
-                    <button onclick="addShopItem()" style="width:auto; margin-bottom:0;">+</button>
+                    <button class="add-btn" onclick="window.addShopItem()">+</button>
                 </div>
-                <div id="shopping-list" style="margin-top:20px;"></div>
+                <div id="shopping-list"></div>
             </article>
+
             <article class="card">
                 <header>Verlauf</header>
                 <ul id="shopping-log" style="font-size:0.8em; color:#666; padding-left:20px; margin-bottom:0;"></ul>
@@ -87,40 +151,53 @@
         </div>
 
         <div id="view-finance" class="app-view">
-            <h1>💰 Finanzen</h1>
+            <div class="back-header">
+                <button class="back-btn" onclick="openModule('main-menu')">❮</button>
+                <h2 style="margin:0; font-size: 1.2rem;">Finanzen</h2>
+            </div>
+
+            <article class="card" style="background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white; border:none;">
+                <header style="border-bottom: 1px solid rgba(255,255,255,0.2);">Monatliche Belastung</header>
+                <div style="font-size: 2.5em; font-weight: bold; text-align: center;">
+                    <span id="fin-total">0</span> €
+                </div>
+                <div class="grid" style="margin-top:15px; text-align:center; font-size:0.9em;">
+                    <div><small style="opacity:0.8">Alex (55%)</small><br><b id="fin-share-me">0 €</b></div>
+                    <div><small style="opacity:0.8">Fred (45%)</small><br><b id="fin-share-him">0 €</b></div>
+                </div>
+            </article>
+
             <article class="card">
-                <header>Fixkosten</header>
+                <header>Fixkosten (Editierbar)</header>
                 <div id="cost-list">Lade...</div>
+                <small style="display:block; text-align:center; color:#888; margin-top:10px;">* GEZ wird anteilig berechnet</small>
             </article>
         </div>
 
         <div id="view-stats" class="app-view">
-            <h1>⚙️ Admin</h1>
+            <div class="back-header">
+                <button class="back-btn" onclick="openModule('main-menu')">❮</button>
+                <h2 style="margin:0; font-size: 1.2rem;">Admin & Verlauf</h2>
+            </div>
+
             <article class="card">
                 <header>Logbuch Putzen</header>
                 <div id="cleaning-log" style="font-size:0.8em;"></div>
             </article>
-            <details>
-                <summary>Admin Tools</summary>
-                <button class="danger" onclick="startFresh()">⚠️ ALLES NEUSTARTEN (Reset)</button>
-            </details>
+
+            <div id="setup-container" style="text-align:center; margin-top:20px;">
+                <button class="danger" onclick="startFresh()">⚠️ ALLES NEUSTARTEN (Alex=Bad, Fred=Küche)</button>
+            </div>
         </div>
 
     </main>
-
-    <div class="bottom-nav">
-        <div class="nav-item active" onclick="switchTab('cleaning', this)">🧹 Putzen</div>
-        <div class="nav-item" onclick="switchTab('shopping', this)">🛒</div>
-        <div class="nav-item" onclick="switchTab('finance', this)">💰</div>
-        <div class="nav-item" onclick="switchTab('stats', this)">⚙️</div>
-    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, Timestamp } 
         from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-        // --- CONFIG ---
+        // --- DEINE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyDGus88p9qscEFHWbZrTGM3Ja6bgSX4IrQ",
             authDomain: "wg-app-388eb.firebaseapp.com",
@@ -134,11 +211,9 @@
         const db = getFirestore(app);
 
         // --- NAVIGATION ---
-        window.switchTab = (viewId, el) => {
-            document.querySelectorAll('.app-view').forEach(e => e.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
-            document.getElementById('view-' + viewId).classList.add('active');
-            el.classList.add('active');
+        window.openModule = (moduleId) => {
+            document.querySelectorAll('.app-view').forEach(el => el.classList.remove('active'));
+            document.getElementById('view-' + moduleId).classList.add('active');
         };
 
         // --- LOGIK: PUNKTE ---
@@ -148,17 +223,16 @@
             if (daysPassed < 7) return 5;
             if (daysPassed < 8) return 2;
             const overdue = daysPassed - 8;
-            return -5 - (overdue * 5); // -5, -10, -15...
+            return -5 - (overdue * 5);
         }
 
-        // --- RENDER ROOM CARD ---
-        // Das ist das Herzstück: Es zeigt den RAUM, und darin wer zuständig ist.
+        // --- RENDER FUNCTIONS ---
+        
         function renderRoomCard(roomKey, roomData) {
             const assignee = roomData.assignee;
             const now = new Date();
             const lastCleanedDate = roomData.lastCleaned.toDate();
             const daysPassed = Math.floor((now - lastCleanedDate) / (1000 * 60 * 60 * 24));
-            
             const points = calculatePoints(daysPassed);
 
             let colorClass = "color-good";
@@ -175,21 +249,20 @@
             const roomName = roomKey === "Bad" ? "Das Bad" : "Die Küche";
 
             return `
-            <article class="card" style="border-left: 6px solid var(--${colorClass.replace('color-', '')})">
+            <article class="card" style="border-left: 5px solid var(--${colorClass.replace('color-', '')})">
                 <div class="room-header">
-                    <div class="room-title">
-                        <span class="room-icon">${icon}</span> ${roomName}
+                    <div>
+                        <span style="font-size:1.5em; margin-right:10px;">${icon}</span>
+                        <span style="font-weight:bold; font-size:1.2em;">${roomName}</span>
                     </div>
                     <span class="assignee-badge">👤 ${assignee}</span>
                 </div>
-
                 <div class="deadline ${colorClass}">
                     ${statusText} (Tag ${daysPassed})
                 </div>
                 <div class="progress-container">
                     <div class="progress-bar ${bgClass}" style="width: ${progress}%"></div>
                 </div>
-
                 <button class="action-btn" onclick="finishTask('${roomKey}', '${assignee}', ${points})">
                     ✅ Erledigt (+${points} Pkt)
                 </button>
@@ -197,62 +270,149 @@
             `;
         }
 
+        function renderFinance(finance) {
+            let monthlyTotal = 0;
+            let html = "<table style='width:100%'>";
+            
+            Object.keys(finance.costs || {}).forEach(k => {
+                const item = finance.costs[k];
+                const isGEZ = k === 'GEZ'; // oder 'gez' je nach Speicherung
+                
+                // Berechnung Monat
+                let monthVal = item.val;
+                if(isGEZ || item.val === 55.08) monthVal = item.val / 3; // Fallback Check für GEZ Betrag
+                monthlyTotal += monthVal;
+
+                // Anzeige Text
+                let valText = `${item.val} €`;
+                if(isGEZ || item.val === 55.08) valText += " / Q";
+
+                html += `
+                <tr>
+                    <td style="padding:10px 0;">
+                        <b>${k}</b><br>
+                        <small style="color:#888;">Tag ${item.day || 1}</small>
+                    </td>
+                    <td style="text-align:right;">
+                        <b>${valText}</b><br>
+                        <a class="edit-link" onclick="editCost('${k}', ${item.val})">Bearbeiten</a>
+                    </td>
+                </tr>`;
+            });
+            html += "</table>";
+            
+            document.getElementById('cost-list').innerHTML = html;
+            document.getElementById('fin-total').innerText = monthlyTotal.toFixed(2);
+            document.getElementById('fin-share-me').innerText = (monthlyTotal * 0.55).toFixed(2) + " €";
+            document.getElementById('fin-share-him').innerText = (monthlyTotal * 0.45).toFixed(2) + " €";
+            
+            // Widget Text
+            document.getElementById('fin-widget-summary').innerText = `Gesamt: ${monthlyTotal.toFixed(0)}€ / Monat`;
+        }
+
+        function renderShopping(data) {
+            // Liste
+            let html = "";
+            (data.list || []).forEach((item, i) => {
+                html += `
+                <div class="list-item">
+                    <span>${item}</span>
+                    <div class="check-btn" onclick="buyItem(${i}, '${item}')">✔</div>
+                </div>`;
+            });
+            if((data.list || []).length === 0) html = "<p style='text-align:center; color:#999'>Alles da!</p>";
+            document.getElementById('shopping-list').innerHTML = html;
+            
+            // Widget Text
+            const count = (data.list || []).length;
+            document.getElementById('shop-widget-summary').innerText = count > 0 ? `${count} Teile fehlen` : "Alles da ✅";
+
+            // Log
+            let logHtml = "";
+            (data.log || []).slice(0,5).forEach(l => logHtml += `<li>${l}</li>`);
+            document.getElementById('shopping-log').innerHTML = logHtml;
+        }
+
         // --- HAUPTFUNKTION ---
         function loadApp() {
-            // Wir nutzen eine neue Collection 'wg_app_v5_independent' damit alles frisch ist
             onSnapshot(doc(db, "wg_app", "wg_app_v5_independent"), (docSnap) => {
                 if (!docSnap.exists()) {
-                    document.getElementById('rooms-container').innerHTML = "";
-                    document.getElementById('setup-container').style.display = 'block';
-                    return;
+                    // Falls leer, zeigen wir nur den Reset Button im Admin
+                    return; 
                 }
-                document.getElementById('setup-container').style.display = 'none';
-
                 const data = docSnap.data();
 
-                // 1. Scores (Oben in der Leiste)
+                // 1. Dashboard Widget Putzen
+                const alexRoom = data.rooms.Kueche.assignee === "Alex" ? "Küche" : "Bad";
+                const fredRoom = data.rooms.Kueche.assignee === "Fred" ? "Küche" : "Bad";
+                // Vereinfachte Anzeige für Dashboard
+                document.getElementById('dashboard-summary').innerHTML = `
+                    <div class="widget-row"><span>Alex: ${alexRoom}</span><span>${data.scores.Alex} Pkt</span></div>
+                    <div class="widget-row"><span>Fred: ${fredRoom}</span><span>${data.scores.Fred} Pkt</span></div>
+                `;
+
+                // 2. Putz Ansicht
                 document.getElementById('score-alex').innerText = data.scores.Alex;
                 document.getElementById('score-fred').innerText = data.scores.Fred;
-
-                // 2. Rooms (Bad und Küche Kacheln)
-                let html = "";
-                // Reihenfolge: Küche, dann Bad
-                if(data.rooms.Kueche) html += renderRoomCard("Kueche", data.rooms.Kueche);
-                if(data.rooms.Bad) html += renderRoomCard("Bad", data.rooms.Bad);
                 
-                document.getElementById('rooms-container').innerHTML = html;
+                let roomHtml = "";
+                if(data.rooms.Kueche) roomHtml += renderRoomCard("Kueche", data.rooms.Kueche);
+                if(data.rooms.Bad) roomHtml += renderRoomCard("Bad", data.rooms.Bad);
+                document.getElementById('rooms-container').innerHTML = roomHtml;
 
-                // 3. Andere Module
-                if(data.shopping) renderShopping(data.shopping);
+                // 3. Module
                 if(data.finance) renderFinance(data.finance);
-                if(data.history) renderHistory(data.history);
+                if(data.shopping) renderShopping(data.shopping);
+                
+                // 4. Log
+                if(data.history) {
+                    let hHtml = "<ul>";
+                    data.history.slice(0,10).forEach(h => hHtml += `<li>${h.date}: ${h.txt}</li>`);
+                    hHtml += "</ul>";
+                    document.getElementById('cleaning-log').innerHTML = hHtml;
+                }
             });
         }
 
-        // --- AKTIONEN ---
+        // --- EDIT FUNCTIONS ---
+        window.editScore = async (user) => {
+            const current = document.getElementById(user === 'Alex' ? 'score-alex' : 'score-fred').innerText;
+            const newVal = prompt(`Punkte für ${user} bearbeiten:`, current);
+            if(newVal === null) return;
+            const intVal = parseInt(newVal);
+            if(isNaN(intVal)) return alert("Zahl eingeben!");
+            
+            const docRef = doc(db, "wg_app", "wg_app_v5_independent");
+            await updateDoc(docRef, { [`scores.${user}`]: intVal });
+        };
+
+        window.editCost = async (key, currentVal) => {
+            const newVal = prompt(`Neuer Betrag für ${key}:`, currentVal);
+            if(newVal === null) return;
+            const floatVal = parseFloat(newVal.replace(',', '.'));
+            if(isNaN(floatVal)) return alert("Zahl eingeben!");
+            
+            const docRef = doc(db, "wg_app", "wg_app_v5_independent");
+            await updateDoc(docRef, { [`finance.costs.${key}.val`]: floatVal });
+        };
+
+        // --- TASK ACTIONS ---
         window.finishTask = async (roomKey, currentAssignee, points) => {
             const roomName = roomKey === "Kueche" ? "Küche" : "Bad";
             if(!confirm(`${currentAssignee} hat ${roomName} geputzt?`)) return;
 
             const docRef = doc(db, "wg_app", "wg_app_v5_independent");
-            const docSnap = await getDoc(docRef);
-            const data = docSnap.data();
+            const snap = await getDoc(docRef);
+            const data = snap.data();
 
-            // 1. Punkte vergeben
-            const newScore = data.scores[currentAssignee] + points;
-            
-            // 2. Tauschpartner (Unabhängig: Wenn Alex fertig, ist Fred dran)
             const nextAssignee = (currentAssignee === "Alex") ? "Fred" : "Alex";
+            const newScore = data.scores[currentAssignee] + points;
 
-            // 3. Updates
             const updates = {};
             updates[`scores.${currentAssignee}`] = newScore;
-            
-            // Raum: Neuer Besitzer, Timer Reset
             updates[`rooms.${roomKey}.assignee`] = nextAssignee;
             updates[`rooms.${roomKey}.lastCleaned`] = Timestamp.now();
-
-            // History
+            
             const historyEntry = { 
                 txt: `${currentAssignee}: ${roomName} (+${points}) -> Nun: ${nextAssignee}`, 
                 date: new Date().toLocaleDateString('de-DE') 
@@ -263,20 +423,7 @@
             await updateDoc(docRef, updates);
         };
 
-        // --- EINKAUFSLISTE ---
-        function renderShopping(data) {
-            let html = "";
-            (data.list || []).forEach((item, i) => {
-                html += `<tr><td>${item}</td><td><div class="check-btn" onclick="buyItem(${i}, '${item}')">✔</div></td></tr>`;
-            });
-            if((data.list || []).length === 0) html = "<tr><td colspan='2' style='text-align:center; color:#999'>Alles da!</td></tr>";
-            document.getElementById('shopping-list').innerHTML = `<table>${html}</table>`;
-
-            let logHtml = "";
-            (data.log || []).slice(0,5).forEach(l => logHtml += `<li>${l}</li>`);
-            document.getElementById('shopping-log').innerHTML = logHtml;
-        }
-
+        // --- SHOPPING ACTIONS ---
         window.addShopItem = async () => {
             const val = document.getElementById('shop-input').value;
             if(!val) return;
@@ -299,36 +446,13 @@
             await updateDoc(docRef, { "shopping.list": list, "shopping.log": newLog });
         };
 
-        // --- FINANZEN ---
-        function renderFinance(finance) {
-            let html = "<table style='width:100%; font-size:0.9em'>";
-            Object.keys(finance.costs || {}).forEach(k => {
-                const item = finance.costs[k];
-                html += `<tr><td>${k}</td><td style='text-align:right'>${item.val} €</td></tr>`;
-            });
-            html += "</table>";
-            document.getElementById('cost-list').innerHTML = html;
-        }
-
-        // --- HISTORY ---
-        function renderHistory(history) {
-            if(!history) return;
-            let html = "<ul>";
-            history.slice(0,10).forEach(h => html += `<li>${h.date}: ${h.txt}</li>`);
-            html += "</ul>";
-            document.getElementById('cleaning-log').innerHTML = html;
-        }
-
-        // --- START FRESH (Initialisierung) ---
+        // --- RESET / INIT ---
         window.startFresh = async () => {
-            // HIER IST DIE WICHTIGE ÄNDERUNG:
             if(!confirm("Alles löschen und neu starten?\n\nAlex -> Bad\nFred -> Küche")) return;
-            
             const now = Timestamp.now();
             await setDoc(doc(db, "wg_app", "wg_app_v5_independent"), {
                 scores: { Alex: 0, Fred: 0 },
                 rooms: {
-                    // Alex startet im Bad, Fred in der Küche
                     Bad: { assignee: "Alex", lastCleaned: now },
                     Kueche: { assignee: "Fred", lastCleaned: now }
                 },
@@ -336,7 +460,10 @@
                 history: [],
                 finance: { 
                     costs: {
-                        Miete: { val: 850 }, Strom: { val: 85 }, Internet: { val: 40 }
+                        Miete: { val: 850, day: 1 }, 
+                        Strom: { val: 85, day: 1 }, 
+                        Internet: { val: 40, day: 1 },
+                        GEZ: { val: 55.08, day: 15 }
                     }
                 }
             });
